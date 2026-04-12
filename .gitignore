@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build123d / CadQuery
+*.step.bak
+*.stl.bak
+build/
+
+# PlatformIO (ESP32 firmware)
+firmware/.pio/
+firmware/.vscode/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test data (raw CSVs can be large)
+docs/tests/feeder-bakeoff/raw/
+
+# Secrets
+.env
+credentials.json

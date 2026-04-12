@@ -1,0 +1,40 @@
+Running 10000 trials per architecture (seed=42, N=52 cards)
+Uniform expectation: rising ~26.5, adjacency ~0.98, displacement ~17.3, Kendall τ ~663
+
+Architecture                            Rising seq.     Adjacency     Displace.      Kendall τ   ≈ Riffles
+---------------------------------------------------------------------------------------------------------
+True uniform (ideal)                   26.48 ± 2.10   0.98 ± 0.99  17.32 ± 1.53     663 ±   63       10.00
+Riffle shuffle × 1                      2.00 ± 0.00  24.98 ± 3.57  13.02 ± 2.09     339 ±   54        1.00
+Riffle shuffle × 2                      4.00 ± 0.00  12.22 ± 3.04  15.20 ± 1.74     503 ±   62        2.00
+Riffle shuffle × 3                      7.98 ± 0.14   6.00 ± 2.26  16.31 ± 1.63     585 ±   63        3.00
+Riffle shuffle × 4                     14.47 ± 1.03   3.07 ± 1.71  16.84 ± 1.56     626 ±   63        4.00
+Riffle shuffle × 5                     20.09 ± 1.78   1.88 ± 1.37  17.07 ± 1.55     644 ±   63        5.00
+Riffle shuffle × 6                     23.32 ± 2.03   1.36 ± 1.18  17.23 ± 1.55     655 ±   64        6.00
+Riffle shuffle × 7                     24.96 ± 2.06   1.15 ± 1.08  17.25 ± 1.53     658 ±   63        7.00
+Riffle shuffle × 8                     25.74 ± 2.09   1.08 ± 1.04  17.30 ± 1.54     661 ±   64        8.00
+Riffle shuffle × 10                    26.32 ± 2.12   1.00 ± 0.99  17.32 ± 1.54     662 ±   63       10.00
+Current plan: 2-pass 8-bin FIFO        26.08 ± 2.11   1.45 ± 1.21  17.16 ± 1.54     651 ±   63        9.20
+Current plan: 2-pass 8-bin LIFO        26.11 ± 2.08   1.43 ± 1.19  17.21 ± 1.54     654 ±   63        9.27
+Alt: 2-pass 16-bin FIFO                26.37 ± 2.12   1.11 ± 1.06  17.28 ± 1.53     659 ±   63       10.00
+Alt: 1-pass 16-bin FIFO                24.88 ± 2.09   3.35 ± 1.80  16.78 ± 1.58     622 ±   63        6.95
+Alt: 1-pass 24-bin FIFO                25.46 ± 2.11   2.41 ± 1.52  16.99 ± 1.56     637 ±   63        7.64
+Alt: 1-pass 32-bin FIFO                25.68 ± 2.10   2.01 ± 1.40  17.06 ± 1.56     643 ±   63        7.93
+Alt: 3-pass 8-bin FIFO                 26.46 ± 2.10   1.03 ± 1.01  17.31 ± 1.53     662 ±   63       10.00
+Alt: 3-pass 8-bin LIFO                 26.56 ± 2.10   0.93 ± 0.97  17.35 ± 1.53     664 ±   63       10.00
+Alt: Slot-rack 52 (1 pass)             26.48 ± 2.11   0.98 ± 0.99  17.32 ± 1.53     663 ±   63       10.00
+
+=========================================================================================================
+VERDICT
+=========================================================================================================
+  Current plan: 2-pass 8-bin FIFO       rising=26.08  ~9.20 riffles  PASS
+  Current plan: 2-pass 8-bin LIFO       rising=26.11  ~9.27 riffles  PASS
+  Alt: 2-pass 16-bin FIFO               rising=26.37  ~10.00 riffles  PASS
+  Alt: 1-pass 16-bin FIFO               rising=24.88  ~6.95 riffles  FAIL
+  Alt: 1-pass 24-bin FIFO               rising=25.46  ~7.64 riffles  FAIL
+  Alt: 1-pass 32-bin FIFO               rising=25.68  ~7.93 riffles  FAIL
+  Alt: 3-pass 8-bin FIFO                rising=26.46  ~10.00 riffles  PASS
+  Alt: 3-pass 8-bin LIFO                rising=26.56  ~10.00 riffles  PASS
+  Alt: Slot-rack 52 (1 pass)            rising=26.48  ~10.00 riffles  PASS
+
+Pass criterion: rising-sequence mean >= 26.0 (target: ~7 riffle equivalent).
+Uniform reference: 26.48.
