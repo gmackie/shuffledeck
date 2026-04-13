@@ -60,14 +60,23 @@ def main() -> None:
     output_part = build_output_tray()
     export_part(output_part, "output", CAD_DIR / "output")
 
-    # ── Chassis (placeholder) ───────────────────────────────────────
-    # TODO: implement cad/chassis/chassis.py with build_chassis()
-    # print("[chassis]")
-    # from chassis.chassis import build_chassis
-    # chassis_part = build_chassis()
-    # export_part(chassis_part, "chassis", CAD_DIR / "chassis")
+    # ── Chassis ───────────────────────────────────────────────────────
+    print("[chassis]")
+    from chassis.chassis import build_chassis, build_chassis_section
+    chassis_part = build_chassis()
+    export_part(chassis_part, "chassis_full", CAD_DIR / "chassis")
+    # Also export printable sections (3 pieces, each fits on a standard bed)
+    for i in range(3):
+        section = build_chassis_section(i)
+        export_part(section, f"chassis_section_{i}", CAD_DIR / "chassis")
 
-    print("\nDone. Implemented modules exported; see TODO comments for remaining.")
+    # ── Feeder Candidate A (friction+retard baseline) ────────────────
+    print("[feeder_candidate_a]")
+    from feeder.candidate_a_friction_retard import build_feeder_candidate_a
+    feeder_a_part = build_feeder_candidate_a()
+    export_part(feeder_a_part, "feeder_candidate_a", CAD_DIR / "feeder")
+
+    print("\nDone. All modules exported.")
 
 
 if __name__ == "__main__":

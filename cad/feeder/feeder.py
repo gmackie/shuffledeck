@@ -8,6 +8,11 @@
 # and NEMA17 mount. The winning singulation geometry plugs in at the
 # marked placeholder locations.
 #
+# Bakeoff implementations:
+#   Candidate A (baseline): candidate_a_friction_retard.py
+#     Friction roller + retard pad singulation. Builds complete feeder
+#     via build_feeder_candidate_a().
+#
 # Run standalone:  python feeder.py
 # Outputs:         feeder.step
 

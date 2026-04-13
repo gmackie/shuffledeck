@@ -77,8 +77,22 @@ PUSHER_PLATE_THICKNESS = 2.0     # mm
 PUSHER_PLATE_WIDTH = CARD_WIDTH + 2 * CARD_CLEARANCE_WIDTH - 2 * PUSHER_CLEARANCE
 PUSHER_PLATE_DEPTH = CARD_HEIGHT + 2 * CARD_CLEARANCE_HEIGHT - 2 * PUSHER_CLEARANCE
 
-# Elevator
-ELEVATOR_TRAVEL = BIN_INTERNAL_HEIGHT + 5.0   # mm — enough to clear bin top
+# Sensor-guided pusher — Finding 1 from datum/tolerance budget
+# Contact/proximity sensor mount on pusher plate (microswitch or IR reflective)
+SENSOR_BOSS_WIDTH = 10.0         # mm — mounting boss on pusher plate
+SENSOR_BOSS_DEPTH = 8.0          # mm
+SENSOR_BOSS_HEIGHT = 5.0         # mm — raised boss for microswitch lever
+SENSOR_MOUNT_HOLE_DIA = 2.2      # mm — M2 clearance for sensor screws
+SENSOR_MOUNT_HOLE_SPACING = 6.0  # mm — distance between sensor mounting holes
+
+# Compliant pusher surface — spring-loaded flex zone
+# A thin flex zone around the plate perimeter conforms to single-card stacks
+FLEX_ZONE_WIDTH = 3.0            # mm — width of the thinned perimeter ring
+FLEX_ZONE_THICKNESS = 0.6        # mm — thin enough to flex under light load
+FLEX_ZONE_STEP = PUSHER_PLATE_THICKNESS - FLEX_ZONE_THICKNESS  # step depth
+
+# Elevator — full range: 0 to bin height (accommodates 1-10 card stacks)
+ELEVATOR_TRAVEL = BIN_INTERNAL_HEIGHT + 5.0   # mm — full bin height + clearance
 ELEVATOR_FRAME_WALL = 3.0        # mm
 ELEVATOR_FRAME_WIDTH = PUSHER_PLATE_WIDTH + 2 * ELEVATOR_FRAME_WALL
 ELEVATOR_FRAME_DEPTH = 30.0      # mm — compact frame behind pusher
@@ -126,20 +140,84 @@ RAIL_MOUNT_PLATE_HEIGHT = MGN12_CARRIAGE_WIDTH + 16.0  # mm
 # Chassis mounting
 CHASSIS_MOUNT_INSET = 10.0       # mm from plate edges
 
+# ── Squaring station — Finding 2 from datum/tolerance budget ─────────
+# Jogger/tap squaring step between accumulator tray and feeder reload.
+# Tight pocket with funnel entry narrows stack skew from +/-1.5mm to ~0.
+SQUARING_CLEARANCE = 0.5         # mm per side — tight guides (vs 2.0mm in hopper)
+SQUARING_INT_WIDTH = CARD_WIDTH + 2 * SQUARING_CLEARANCE   # ~64.5 mm
+SQUARING_INT_DEPTH = CARD_HEIGHT + 2 * SQUARING_CLEARANCE  # ~89.9 mm
+SQUARING_WALL = 3.0              # mm — thick enough to mount solenoid
+SQUARING_FLOOR = 2.0             # mm
+SQUARING_HEIGHT = DECK_STACK_HEIGHT_MAX + 5.0  # mm — full deck + margin
+SQUARING_FUNNEL_LENGTH = 20.0    # mm — entry funnel narrows over this distance
+SQUARING_FUNNEL_EXTRA_WIDTH = 3.0  # mm per side — wider at entry, narrows to tight
+SQUARING_FUNNEL_EXTRA_DEPTH = 3.0  # mm per side
+
+# Solenoid tap arm mount on squaring station side wall
+SOLENOID_MOUNT_WIDTH = 15.0      # mm — mounting plate for small solenoid
+SOLENOID_MOUNT_HEIGHT = 12.0     # mm
+SOLENOID_MOUNT_THICKNESS = 3.0   # mm — boss thickness on exterior wall
+SOLENOID_HOLE_DIA = 3.4          # mm — M3 clearance
+SOLENOID_HOLE_SPACING = 10.0     # mm — between mounting holes
+SOLENOID_SLOT_WIDTH = 8.0        # mm — slot through wall for tap arm lever
+SOLENOID_SLOT_HEIGHT = 6.0       # mm
+
+# Squaring station offset from accumulator tray
+SQUARING_X_OFFSET = 0.0          # mm — centered on same axis as tray
+SQUARING_Y_OFFSET = (TRAY_INT_DEPTH / 2 +
+                     TRAY_WALL +
+                     10.0)        # mm — positioned after tray, toward feeder
+
 
 def build_recombine() -> bd.Part:
     """Build the recombine module assembly as a single part."""
 
     with BuildPart() as recombine:
 
-        # ── 1. Pusher plate ────────────────────────────────────────────
+        # ── 1. Pusher plate with sensor mount and compliant surface ────
         # Flat plate that rises through the bin floor slot to lift cards.
-        # Positioned at origin; the full assembly is composed in-place.
+        # Includes a contact-sensor boss and a compliant flex-zone perimeter
+        # so the pusher can detect and conform to single-card stacks (0.3 mm).
         with BuildPart() as _pusher:
             Box(PUSHER_PLATE_WIDTH, PUSHER_PLATE_DEPTH, PUSHER_PLATE_THICKNESS,
                 align=(Align.CENTER, Align.CENTER, Align.MIN))
-            # Slight chamfer on top edges to avoid snagging cards
-            # (represented as a thinner rim around the perimeter)
+
+            # 1a. Compliant flex zone — thin perimeter ring that flexes under
+            # light load, allowing the pusher to pick up even a single card
+            # without missing it.  We subtract a perimeter step leaving only
+            # FLEX_ZONE_THICKNESS at the outer rim.
+            inner_w = PUSHER_PLATE_WIDTH - 2 * FLEX_ZONE_WIDTH
+            inner_d = PUSHER_PLATE_DEPTH - 2 * FLEX_ZONE_WIDTH
+            with BuildPart(mode=Mode.SUBTRACT):
+                # Outer perimeter pocket (top surface step)
+                Box(PUSHER_PLATE_WIDTH, PUSHER_PLATE_DEPTH, FLEX_ZONE_STEP,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX))
+                bd.Location((0, 0, PUSHER_PLATE_THICKNESS))
+            # Re-add the rigid center island
+            with BuildPart():
+                Box(inner_w, inner_d, FLEX_ZONE_STEP,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX))
+                bd.Location((0, 0, PUSHER_PLATE_THICKNESS))
+
+            # 1b. Sensor mounting boss — small raised boss on the underside
+            # of the pusher plate for a microswitch lever or IR reflective
+            # sensor facing downward to detect stack contact.
+            with BuildPart():
+                Box(SENSOR_BOSS_WIDTH, SENSOR_BOSS_DEPTH, SENSOR_BOSS_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX))
+                # Boss hangs below the plate (negative Z)
+                bd.Location((0, 0, 0))
+
+            # Sensor mounting holes (2x M2 through the boss)
+            for dx in (-SENSOR_MOUNT_HOLE_SPACING / 2,
+                        SENSOR_MOUNT_HOLE_SPACING / 2):
+                with BuildPart(mode=Mode.SUBTRACT):
+                    Cylinder(
+                        radius=SENSOR_MOUNT_HOLE_DIA / 2,
+                        height=SENSOR_BOSS_HEIGHT + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
+                    bd.Location((dx, 0, -SENSOR_BOSS_HEIGHT - 1.0))
 
         # ── 2. Collection / accumulator tray ───────────────────────────
         # Positioned above the pusher mechanism, offset in Z.
@@ -323,6 +401,87 @@ def build_recombine() -> bd.Part:
             bd.Location((motor_x - MOTOR_PLATE_THICKNESS / 2 - 2.0,
                          0, motor_z + MOTOR_PLATE_WIDTH / 2))
             bd.Rotation((0, 90, 0))
+
+        # ── 7. Squaring station ───────────────────────────────────────
+        # Finding 2: stack skew +/-1.5mm eats all clearance in the 2.0mm
+        # hopper.  This pocket has tight side guides (~0.5mm clearance/side)
+        # with a funnel entry that narrows over 20mm.  A solenoid tap arm
+        # pushes the stack against the opposite wall to square it before
+        # the stack is transferred into the feeder hopper for pass 2.
+
+        sq_x = SQUARING_X_OFFSET
+        sq_y = SQUARING_Y_OFFSET
+        sq_z = tray_z_offset   # same height datum as accumulator tray
+
+        sq_ext_w = SQUARING_INT_WIDTH + 2 * SQUARING_WALL
+        sq_ext_d = SQUARING_INT_DEPTH + 2 * SQUARING_WALL
+        sq_ext_h = SQUARING_HEIGHT + SQUARING_FLOOR
+
+        # 7a. Main pocket body
+        with BuildPart():
+            Box(sq_ext_w, sq_ext_d, sq_ext_h,
+                align=(Align.CENTER, Align.CENTER, Align.MIN))
+            bd.Location((sq_x, sq_y, sq_z))
+
+        # Hollow interior — tight pocket
+        with BuildPart(mode=Mode.SUBTRACT):
+            Box(SQUARING_INT_WIDTH, SQUARING_INT_DEPTH, SQUARING_HEIGHT,
+                align=(Align.CENTER, Align.CENTER, Align.MIN))
+            bd.Location((sq_x, sq_y, sq_z + SQUARING_FLOOR))
+
+        # 7b. Funnel entry — wider opening at top that narrows to tight
+        # guides over SQUARING_FUNNEL_LENGTH.  Modeled as a subtracted
+        # tapered box (approximated by a wider cut at the top).
+        funnel_top_w = SQUARING_INT_WIDTH + 2 * SQUARING_FUNNEL_EXTRA_WIDTH
+        funnel_top_d = SQUARING_INT_DEPTH + 2 * SQUARING_FUNNEL_EXTRA_DEPTH
+        funnel_h = SQUARING_FUNNEL_LENGTH
+
+        # Upper wide portion of funnel (subtract at the top of the pocket)
+        with BuildPart(mode=Mode.SUBTRACT):
+            Box(funnel_top_w, funnel_top_d, funnel_h,
+                align=(Align.CENTER, Align.CENTER, Align.MAX))
+            bd.Location((sq_x, sq_y, sq_z + sq_ext_h))
+
+        # 7c. Solenoid tap arm mount — boss on the +X exterior wall with
+        # mounting holes and a slot for the tap lever to pass through.
+        sol_x = sq_x + sq_ext_w / 2 + SOLENOID_MOUNT_THICKNESS / 2
+        sol_y = sq_y
+        sol_z = sq_z + SQUARING_FLOOR + SQUARING_HEIGHT / 2
+
+        # Mounting boss on exterior wall
+        with BuildPart():
+            Box(SOLENOID_MOUNT_THICKNESS, SOLENOID_MOUNT_WIDTH,
+                SOLENOID_MOUNT_HEIGHT,
+                align=(Align.CENTER, Align.CENTER, Align.CENTER))
+            bd.Location((sol_x, sol_y, sol_z))
+
+        # Solenoid mounting holes (2x M3 vertical)
+        for dy in (-SOLENOID_HOLE_SPACING / 2, SOLENOID_HOLE_SPACING / 2):
+            with BuildPart(mode=Mode.SUBTRACT):
+                Cylinder(
+                    radius=SOLENOID_HOLE_DIA / 2,
+                    height=SOLENOID_MOUNT_THICKNESS + SQUARING_WALL + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
+                bd.Location((sq_x + sq_ext_w / 2 - 1.0, sol_y + dy, sol_z))
+                bd.Rotation((0, 90, 0))
+
+        # Slot through the +X wall for the tap arm lever
+        with BuildPart(mode=Mode.SUBTRACT):
+            Box(SQUARING_WALL + SOLENOID_MOUNT_THICKNESS + 2.0,
+                SOLENOID_SLOT_WIDTH, SOLENOID_SLOT_HEIGHT,
+                align=(Align.CENTER, Align.CENTER, Align.CENTER))
+            bd.Location((sq_x + sq_ext_w / 2, sol_y, sol_z))
+
+        # 7d. Exit slot — opening in the -Y wall for the squared stack
+        # to slide or be pushed into the feeder hopper for pass 2.
+        exit_slot_w = SQUARING_INT_WIDTH - 2.0   # slightly narrower than pocket
+        exit_slot_h = SQUARING_HEIGHT             # full height
+        with BuildPart(mode=Mode.SUBTRACT):
+            Box(exit_slot_w, SQUARING_WALL + 2.0, exit_slot_h,
+                align=(Align.CENTER, Align.CENTER, Align.MIN))
+            bd.Location((sq_x, sq_y - sq_ext_d / 2,
+                         sq_z + SQUARING_FLOOR))
 
     return recombine.part
 
