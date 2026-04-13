@@ -42,26 +42,23 @@ def main() -> None:
     bin_bank_part = build_bin_bank()
     export_part(bin_bank_part, "bin_bank", CAD_DIR / "bin-bank")
 
-    # ── Selector (placeholder) ──────────────────────────────────────
-    # TODO: implement cad/selector/selector.py with build_selector()
-    # print("[selector]")
-    # from selector.selector import build_selector
-    # selector_part = build_selector()
-    # export_part(selector_part, "selector", CAD_DIR / "selector")
+    # ── Selector ─────────────────────────────────────────────────────
+    print("[selector]")
+    from selector.selector import build_selector
+    selector_part = build_selector()
+    export_part(selector_part, "selector", CAD_DIR / "selector")
 
-    # ── Recombine (placeholder) ─────────────────────────────────────
-    # TODO: implement cad/recombine/recombine.py with build_recombine()
-    # print("[recombine]")
-    # from recombine.recombine import build_recombine
-    # recombine_part = build_recombine()
-    # export_part(recombine_part, "recombine", CAD_DIR / "recombine")
+    # ── Recombine ────────────────────────────────────────────────────
+    print("[recombine]")
+    from recombine.recombine import build_recombine
+    recombine_part = build_recombine()
+    export_part(recombine_part, "recombine", CAD_DIR / "recombine")
 
-    # ── Output tray (placeholder) ───────────────────────────────────
-    # TODO: implement cad/output/output.py with build_output_tray()
-    # print("[output]")
-    # from output.output import build_output_tray
-    # output_part = build_output_tray()
-    # export_part(output_part, "output", CAD_DIR / "output")
+    # ── Output tray ──────────────────────────────────────────────────
+    print("[output]")
+    from output.output import build_output_tray
+    output_part = build_output_tray()
+    export_part(output_part, "output", CAD_DIR / "output")
 
     # ── Chassis (placeholder) ───────────────────────────────────────
     # TODO: implement cad/chassis/chassis.py with build_chassis()

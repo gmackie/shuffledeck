@@ -690,8 +690,12 @@ User accepted both user challenges and all auto-decided engineering additions. E
 2. ✅ Fill in Targets section. — pro-am primary, $500 BOM, 30 s cycle, new KEM + new Bee envelope. See Targets section above.
 3. ✅ Feeder separator bakeoff protocol written. — `docs/tests/feeder-bakeoff.md`, 4 candidates (friction+retard, escapement, vacuum, kicker+weight) × new KEM + new Bee. Ready to build rig.
 4. ✅ Lock architecture based on Tier 0 + bakeoff results.
-5. Design datum/tolerance budget across module boundaries.
-6. Begin subsystem CAD.
+5. ✅ Datum/tolerance budget. — `docs/plans/datum-tolerance-budget.md`. 5 interface stackups analyzed. Critical: bin→recombine pickup (variable stack height) and recombine→feeder reload (0.1mm margin, needs squaring step).
+6. ✅ Subsystem CAD scaffolding. — All 5 modules parametric in Build123d: feeder (skeleton), selector (carriage + MGN12H + belt drive), bin bank (complete), recombine (pusher/elevator + accumulator), output tray (pocket + spring backstop). Chassis stub remains.
+7. ✅ Main shuffler firmware. — `firmware/shuffler/`, 1,942 lines. 13-state machine, TMC2209 UART, per-pass count invariants, NVS brownout recovery, OLED display, service mode.
+8. ✅ Bakeoff rig firmware. — `firmware/bakeoff-rig/`, interrupt-driven dual-sensor classifier + host capture script.
+
+**All software deliverables complete. Next: physical build (bakeoff rig → feeder bakeoff → lock P4 → refine CAD → print + assemble).**
 
 ## Tier 0 Results — 2026-04-10
 
