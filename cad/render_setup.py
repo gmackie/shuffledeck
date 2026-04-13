@@ -37,7 +37,7 @@ from bin_bank import build_bin_bank, bin_bank_info
 from selector.selector import build_selector
 from recombine.recombine import build_recombine
 from output.output import build_output_tray
-from constants import PLATE_THICKNESS
+from chassis.chassis import PLATE_THICKNESS
 
 # ---------------------------------------------------------------------------
 # Assembly positions — based on chassis zone layout

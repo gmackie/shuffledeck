@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800,height=600">
+<title>Poker Overlay</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    width:800px;height:600px;overflow:hidden;
+    background:transparent;
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+
+  /* ── Theme tokens ── */
+  :root{
+    --label-bg:rgba(0,0,0,.65);
+    --label-fg:#e8e8e8;
+    --pot-bg:rgba(0,0,0,.7);
+    --pot-fg:#ffd700;
+    --name-size:11px;
+  }
+  .theme-light{
+    --label-bg:rgba(255,255,255,.75);
+    --label-fg:#1a1a1a;
+    --pot-bg:rgba(255,255,255,.8);
+    --pot-fg:#b8860b;
+  }
+
+  /* ── Table area ── */
+  #table{position:relative;width:800px;height:600px}
+
+  /* ── Pot ── */
+  #pot{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    background:var(--pot-bg);
+    color:var(--pot-fg);
+    font-size:18px;font-weight:700;
+    padding:8px 20px;border-radius:20px;
+    letter-spacing:.5px;
+    backdrop-filter:blur(4px);
+    display:none;
+    white-space:nowrap;
+  }
+  #pot.visible{display:block}
+
+  /* ── Seat ── */
+  .seat{
+    position:absolute;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    transform:translate(-50%,-50%);
+  }
+  .seat-name{
+    font-size:var(--name-size);font-weight:600;
+    color:var(--label-fg);
+    background:var(--label-bg);
+    padding:2px 10px;border-radius:10px;
+    backdrop-filter:blur(4px);
+    white-space:nowrap;max-width:120px;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .seat-cards{display:flex;gap:4px}
+
+  /* ── Card ── */
+  .card-slot{
+    width:60px;height:85px;
+    perspective:400px;
+  }
+  .card-inner{
+    position:relative;width:100%;height:100%;
+    transition:transform .5s ease;
+    transform-style:preserve-3d;
+  }
+  .card-inner.flipped{transform:rotateY(180deg)}
+
+  .card-face{
+    position:absolute;inset:0;
+    border-radius:6px;
+    backface-visibility:hidden;
+    overflow:hidden;
+  }
+
+  /* Card back */
+  .card-back{
+    background:#1a5c2a;
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent,transparent 8px,
+        rgba(255,255,255,.04) 8px,
+        rgba(255,255,255,.04) 9px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,transparent 8px,
+        rgba(255,255,255,.04) 8px,
+        rgba(255,255,255,.04) 9px
+      );
+    border:2px solid #0d3518;
+    box-shadow:0 1px 4px rgba(0,0,0,.4);
+  }
+  .card-back::after{
+    content:'';position:absolute;inset:6px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:3px;
+  }
+
+  /* Card front */
+  .card-front{
+    transform:rotateY(180deg);
+    background:#fff;
+    border:1.5px solid #bbb;
+    box-shadow:0 1px 4px rgba(0,0,0,.3);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;
+    color:#1a1a1a;
+  }
+  .card-front.red{color:#c0392b}
+
+  .card-corner{
+    position:absolute;
+    display:flex;flex-direction:column;align-items:center;
+    line-height:1;
+  }
+  .card-corner-tl{top:3px;left:4px;font-size:10px}
+  .card-corner-br{bottom:3px;right:4px;font-size:10px;transform:rotate(180deg)}
+  .card-corner .rank{font-weight:700;font-size:11px}
+  .card-corner .suit-sm{font-size:10px}
+
+  .card-center-suit{font-size:26px;user-select:none}
+
+  /* ── Connection status ── */
+  #status{
+    position:absolute;bottom:6px;right:8px;
+    font-size:9px;color:rgba(255,255,255,.45);
+    font-family:monospace;
+  }
+  #status.demo{color:rgba(255,200,50,.6)}
+</style>
+</head>
+<body>
+<div id="table"></div>
+<div id="status"></div>
+<script>
+/** @typedef {{rank:string,suit:string}} Card */
+/** @typedef {{name:string,cards:Card[],pending:Array<{card:Card,revealAt:number}>}} Seat */
+
+(function () {
+  'use strict';
+
+  /* ── URL params ── */
+  const params = new URLSearchParams(location.search);
+  const WS_URL   = params.get('ws') || 'ws://shuffledeck.local:81';
+  const DELAY_S  = parseInt(params.get('delay') || '0', 10);
+  const POT      = params.get('pot') || '';
+  const THEME    = params.get('theme') || 'dark';
+  const NUM_SEATS = 9;
+
+  if (THEME === 'light') document.body.classList.add('theme-light');
+
+  /* Seat positions — oval layout, 800x600 */
+  const POSITIONS = [
+    { x: 400, y: 540 }, // seat 1: bottom center (hero)
+    { x: 160, y: 500 }, // seat 2: bottom-left
+    { x: 40,  y: 360 }, // seat 3: left
+    { x: 60,  y: 180 }, // seat 4: top-left
+    { x: 240, y: 60  }, // seat 5: top-left-center
+    { x: 400, y: 35  }, // seat 6: top center
+    { x: 560, y: 60  }, // seat 7: top-right-center
+    { x: 740, y: 180 }, // seat 8: top-right
+    { x: 760, y: 360 }, // seat 9: right
+  ];
+
+  const SUITS = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  const RED_SUITS = new Set(['h', 'd']);
+
+  /**
+   * Parse a card string like "As", "Th", "2c" into {rank, suit}.
+   * @param {string} str
+   * @returns {Card}
+   */
+  function parseCard(str) {
+    if (!str || str.length < 2) return null;
+    const rank = str.slice(0, -1).toUpperCase();
+    const suit = str.slice(-1).toLowerCase();
+    if (!SUITS[suit]) return null;
+    return { rank, suit };
+  }
+
+  /* ── State ── */
+  /** @type {Seat[]} */
+  const seats = [];
+  for (let i = 0; i < NUM_SEATS; i++) {
+    seats.push({
+      name: params.get('p' + (i + 1)) || 'Seat ' + (i + 1),
+      cards: [],      // revealed cards (max 2)
+      pending: [],    // cards awaiting delay reveal
+    });
+  }
+
+  /* ── DOM build ── */
+  const table = document.getElementById('table');
+  const statusEl = document.getElementById('status');
+
+  // Pot
+  const potEl = document.createElement('div');
+  potEl.id = 'pot';
+  if (POT) {
+    potEl.textContent = 'Pot: $' + POT;
+    potEl.classList.add('visible');
+  }
+  table.appendChild(potEl);
+
+  /** @type {HTMLElement[][]} card inner elements per seat */
+  const cardEls = [];
+  /** @type {HTMLElement[][]} card front elements per seat */
+  const frontEls = [];
+
+  seats.forEach((seat, i) => {
+    const pos = POSITIONS[i];
+    const div = document.createElement('div');
+    div.className = 'seat';
+    div.style.left = pos.x + 'px';
+    div.style.top = pos.y + 'px';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'seat-name';
+    nameEl.textContent = seat.name;
+    div.appendChild(nameEl);
+
+    const cardsDiv = document.createElement('div');
+    cardsDiv.className = 'seat-cards';
+
+    const seatCardEls = [];
+    const seatFrontEls = [];
+
+    for (let c = 0; c < 2; c++) {
+      const slot = document.createElement('div');
+      slot.className = 'card-slot';
+
+      const inner = document.createElement('div');
+      inner.className = 'card-inner';
+
+      const back = document.createElement('div');
+      back.className = 'card-face card-back';
+
+      const front = document.createElement('div');
+      front.className = 'card-face card-front';
+
+      inner.appendChild(back);
+      inner.appendChild(front);
+      slot.appendChild(inner);
+      cardsDiv.appendChild(slot);
+
+      seatCardEls.push(inner);
+      seatFrontEls.push(front);
+    }
+
+    div.appendChild(cardsDiv);
+    table.appendChild(div);
+    cardEls.push(seatCardEls);
+    frontEls.push(seatFrontEls);
+  });
+
+  /**
+   * Render a card onto a front-face element.
+   * @param {HTMLElement} el
+   * @param {Card} card
+   */
+  function renderCardFront(el, card) {
+    const isRed = RED_SUITS.has(card.suit);
+    el.className = 'card-face card-front' + (isRed ? ' red' : '');
+    el.innerHTML = '';
+
+    // Top-left corner
+    const tl = document.createElement('div');
+    tl.className = 'card-corner card-corner-tl';
+    tl.innerHTML = '<span class="rank">' + card.rank + '</span><span class="suit-sm">' + SUITS[card.suit] + '</span>';
+    el.appendChild(tl);
+
+    // Center suit
+    const center = document.createElement('div');
+    center.className = 'card-center-suit';
+    center.textContent = SUITS[card.suit];
+    el.appendChild(center);
+
+    // Bottom-right corner
+    const br = document.createElement('div');
+    br.className = 'card-corner card-corner-br';
+    br.innerHTML = '<span class="rank">' + card.rank + '</span><span class="suit-sm">' + SUITS[card.suit] + '</span>';
+    el.appendChild(br);
+  }
+
+  /**
+   * Reveal a card for a seat (slot 0 or 1).
+   * @param {number} seatIdx
+   * @param {Card} card
+   */
+  function revealCard(seatIdx, card) {
+    const seat = seats[seatIdx];
+    if (seat.cards.length >= 2) return; // already full
+    const slotIdx = seat.cards.length;
+    seat.cards.push(card);
+    renderCardFront(frontEls[seatIdx][slotIdx], card);
+    // Trigger flip
+    cardEls[seatIdx][slotIdx].classList.add('flipped');
+  }
+
+  /**
+   * Reset all seats to face-down.
+   */
+  function resetAll() {
+    seats.forEach((seat, i) => {
+      seat.cards = [];
+      seat.pending = [];
+      cardEls[i][0].classList.remove('flipped');
+      cardEls[i][1].classList.remove('flipped');
+    });
+  }
+
+  /* ── Delay queue processing ── */
+  function processPending() {
+    const now = Date.now();
+    seats.forEach((seat, i) => {
+      while (seat.pending.length > 0 && seat.pending[0].revealAt <= now) {
+        const entry = seat.pending.shift();
+        revealCard(i, entry.card);
+      }
+    });
+  }
+  setInterval(processPending, 200);
+
+  /**
+   * Handle an incoming card_read event.
+   * @param {{card:string,seat:number}} data
+   */
+  function handleCardRead(data) {
+    const card = parseCard(data.card);
+    if (!card) return;
+    const seatIdx = (data.seat || 1) - 1;
+    if (seatIdx < 0 || seatIdx >= NUM_SEATS) return;
+
+    if (DELAY_S > 0) {
+      seats[seatIdx].pending.push({
+        card,
+        revealAt: Date.now() + DELAY_S * 1000,
+      });
+    } else {
+      revealCard(seatIdx, card);
+    }
+  }
+
+  /**
+   * Handle a new_hand or reset event.
+   */
+  function handleReset() {
+    resetAll();
+  }
+
+  /**
+   * Handle pot update.
+   * @param {{amount:number|string}} data
+   */
+  function handlePot(data) {
+    if (data.amount != null) {
+      potEl.textContent = 'Pot: $' + data.amount;
+      potEl.classList.add('visible');
+    }
+  }
+
+  /* ── WebSocket ── */
+  let ws = null;
+  let demoTimer = null;
+  let reconnectTimer = null;
+  let isDemo = false;
+
+  function setStatus(msg, demo) {
+    statusEl.textContent = msg;
+    statusEl.className = demo ? 'demo' : '';
+    isDemo = !!demo;
+  }
+
+  function connect() {
+    if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+    try {
+      ws = new WebSocket(WS_URL);
+    } catch (e) {
+      startDemo();
+      return;
+    }
+
+    ws.onopen = function () {
+      setStatus('Connected');
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    };
+
+    ws.onmessage = function (ev) {
+      let msg;
+      try { msg = JSON.parse(ev.data); } catch (_) { return; }
+      switch (msg.event) {
+        case 'card_read':
+          handleCardRead(msg);
+          break;
+        case 'new_hand':
+        case 'reset':
+          handleReset();
+          break;
+        case 'pot':
+          handlePot(msg);
+          break;
+      }
+    };
+
+    ws.onclose = function () {
+      setStatus('Disconnected');
+      scheduleReconnect();
+    };
+
+    ws.onerror = function () {
+      ws.close();
+    };
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(function () {
+      reconnectTimer = null;
+      if (!ws || ws.readyState === WebSocket.CLOSED) {
+        startDemo();
+        // Also keep trying to reconnect in background
+        reconnectTimer = setTimeout(function tryReconnect() {
+          reconnectTimer = null;
+          connect();
+        }, 10000);
+      }
+    }, 3000);
+  }
+
+  /* ── Demo mode ── */
+  const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+  const SUIT_KEYS = ['s','h','d','c'];
+
+  function randomCard() {
+    return {
+      rank: RANKS[Math.floor(Math.random() * RANKS.length)],
+      suit: SUIT_KEYS[Math.floor(Math.random() * SUIT_KEYS.length)],
+    };
+  }
+
+  function startDemo() {
+    if (demoTimer) return;
+    setStatus('DEMO MODE', true);
+
+    function dealDemoHand() {
+      resetAll();
+      // Deal to 4-6 random seats
+      const count = 4 + Math.floor(Math.random() * 3);
+      const chosen = [];
+      while (chosen.length < count) {
+        const s = Math.floor(Math.random() * NUM_SEATS);
+        if (!chosen.includes(s)) chosen.push(s);
+      }
+
+      let dealIdx = 0;
+      const dealInterval = setInterval(function () {
+        if (dealIdx >= chosen.length * 2) {
+          clearInterval(dealInterval);
+          return;
+        }
+        const seatIdx = chosen[dealIdx % chosen.length];
+        revealCard(seatIdx, randomCard());
+        dealIdx++;
+      }, 250);
+    }
+
+    dealDemoHand();
+    demoTimer = setInterval(dealDemoHand, 5000);
+  }
+
+  /* ── Boot ── */
+  connect();
+})();
+</script>
+</body>
+</html>

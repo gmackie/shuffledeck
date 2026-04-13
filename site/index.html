@@ -351,35 +351,40 @@
       transform: translateY(-2px);
     }
 
-    /* 3D Render Placeholder */
+    /* 3D Model Viewer */
     .hero-render {
       max-width: 640px;
-      height: 360px;
+      height: 400px;
       margin: 0 auto;
       border-radius: 16px;
       border: 1px solid var(--border);
       background: linear-gradient(145deg, #111 0%, #0d1f17 50%, #111 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
       position: relative;
       overflow: hidden;
+      cursor: grab;
     }
 
-    .hero-render::before {
-      content: '';
+    .hero-render:active {
+      cursor: grabbing;
+    }
+
+    .hero-render canvas {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 16px;
+    }
+
+    .hero-render .model-hint {
       position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 50%, var(--green-dim) 0%, transparent 60%);
-    }
-
-    .hero-render span {
-      position: relative;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.15em;
+      bottom: 12px;
+      right: 16px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
       color: var(--text-dim);
       text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0.6;
     }
 
     .hero-stats {
@@ -1182,8 +1187,8 @@
         <a href="#waitlist" class="btn-primary">Join the Waitlist &rarr;</a>
         <a href="https://github.com/shuffledeck" class="btn-secondary" target="_blank" rel="noopener">View on GitHub</a>
       </div>
-      <div class="hero-render">
-        <span>3D Render</span>
+      <div class="hero-render" id="model-viewer">
+        <span class="model-hint">Drag to rotate</span>
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
@@ -1646,6 +1651,114 @@
         document.querySelector('.nav-links').classList.remove('open');
       });
     });
+  </script>
+
+  <!-- Three.js 3D Model Viewer -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const container = document.getElementById('model-viewer');
+    if (container) {
+      const scene = new THREE.Scene();
+
+      const camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 1, 5000);
+      camera.position.set(900, -500, 400);
+      camera.up.set(0, 0, 1);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      container.insertBefore(renderer.domElement, container.firstChild);
+
+      // Lighting
+      const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambient);
+
+      const key = new THREE.DirectionalLight(0xffffff, 1.2);
+      key.position.set(500, -300, 600);
+      scene.add(key);
+
+      const fill = new THREE.DirectionalLight(0x10B981, 0.3);
+      fill.position.set(-400, 200, 300);
+      scene.add(fill);
+
+      const rim = new THREE.DirectionalLight(0xF59E0B, 0.2);
+      rim.position.set(0, 400, 100);
+      scene.add(rim);
+
+      // Controls
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.8;
+      controls.minDistance = 300;
+      controls.maxDistance = 2000;
+      controls.target.set(400, 50, 30);
+      controls.update();
+
+      // Load GLB model
+      const loader = new GLTFLoader();
+      loader.load(
+        '../cad/renders/assembly.glb',
+        function (gltf) {
+          const model = gltf.scene;
+          // Apply materials
+          model.traverse(function (child) {
+            if (child.isMesh) {
+              child.material = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                metalness: 0.3,
+                roughness: 0.6,
+              });
+            }
+          });
+          scene.add(model);
+          // Hide loading hint after model loads
+          var hint = container.querySelector('.model-hint');
+          if (hint) hint.textContent = 'Drag to rotate';
+        },
+        function (xhr) {
+          var hint = container.querySelector('.model-hint');
+          if (hint && xhr.total > 0) {
+            var pct = Math.round((xhr.loaded / xhr.total) * 100);
+            hint.textContent = 'Loading model... ' + pct + '%';
+          }
+        },
+        function (err) {
+          console.warn('GLB load failed:', err);
+          var hint = container.querySelector('.model-hint');
+          if (hint) hint.textContent = '3D model — install Build123d to generate';
+        }
+      );
+
+      // Render loop
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Resize handler
+      window.addEventListener('resize', function () {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+    }
   </script>
 
 </body>
