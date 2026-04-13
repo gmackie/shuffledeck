@@ -1185,7 +1185,7 @@
       <p class="hero-sub">An open-source automatic card shuffler that drops into your poker table. Mathematically proven randomization at 1/10th the price of commercial systems.</p>
       <div class="hero-actions">
         <a href="#waitlist" class="btn-primary">Join the Waitlist &rarr;</a>
-        <a href="https://github.com/shuffledeck" class="btn-secondary" target="_blank" rel="noopener">View on GitHub</a>
+        <a href="https://github.com/gmackie/shuffledeck" class="btn-secondary" target="_blank" rel="noopener">View on GitHub</a>
       </div>
       <div class="hero-render" id="model-viewer">
         <span class="model-hint">Drag to rotate</span>
@@ -1594,9 +1594,10 @@
       <div class="waitlist-box fade-in">
         <h2>Be first.</h2>
         <p class="tagline">Limited early-bird kits at a discounted price. Join the waitlist.</p>
-        <form class="waitlist-form" action="#" method="POST" onsubmit="return false;">
+        <form class="waitlist-form" action="https://formspree.io/f/xplaceholder" method="POST" id="waitlist-form">
           <input type="email" name="email" placeholder="you@example.com" required autocomplete="email" aria-label="Email address">
-          <button type="submit">Join Waitlist</button>
+          <input type="hidden" name="_subject" value="ShuffleDeck Waitlist Signup">
+          <button type="submit" id="waitlist-btn">Join Waitlist</button>
         </form>
         <p class="waitlist-note">No spam. We will only email you about ShuffleDeck launches and updates.</p>
       </div>
@@ -1615,7 +1616,7 @@
           </span>
         </div>
         <div class="footer-right">
-          <a href="https://github.com/shuffledeck" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/gmackie/shuffledeck" class="footer-link" target="_blank" rel="noopener">GitHub</a>
           <a href="#specs" class="footer-link">Specs</a>
           <a href="#faq" class="footer-link">FAQ</a>
           <span class="footer-copy">&copy; 2026 ShuffleDeck</span>
@@ -1644,6 +1645,35 @@
         targets.forEach(function (el) { el.classList.add('visible'); });
       }
     })();
+
+    // Waitlist form submission
+    var wform = document.getElementById('waitlist-form');
+    if (wform) {
+      wform.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('waitlist-btn');
+        var data = new FormData(wform);
+        btn.textContent = 'Joining...';
+        btn.disabled = true;
+        fetch(wform.action, {
+          method: 'POST',
+          body: data,
+          headers: { 'Accept': 'application/json' }
+        }).then(function(r) {
+          if (r.ok) {
+            btn.textContent = 'You\'re in!';
+            btn.style.background = 'var(--green)';
+            wform.querySelector('input[type=email]').value = '';
+          } else {
+            btn.textContent = 'Try again';
+            btn.disabled = false;
+          }
+        }).catch(function() {
+          btn.textContent = 'Try again';
+          btn.disabled = false;
+        });
+      });
+    }
 
     // Close mobile nav when clicking a link
     document.querySelectorAll('.nav-links a').forEach(function (link) {
