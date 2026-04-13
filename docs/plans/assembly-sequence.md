@@ -30,7 +30,7 @@ Cross-reference `bom.md`. Key items to verify before starting:
 
 - [ ] ESP32 DevKit V1 (E1) -- verify it powers on via USB and serial monitor works
 - [ ] 4x TMC2209 driver boards (E2) -- verify all 4 have correct MS1/MS2 pads for addresses 0-3
-- [ ] 4x NEMA17 steppers: 1 pancake E3, 2 standard E4/E5, 1 short E6
+- [ ] 4x NEMA17 steppers (Lumen 3D printer salvage, all 40mm standard — see `motor-setup-lumen.md`)
 - [ ] 2x MGN12H rail + carriage sets, 600 mm (M1, M2)
 - [ ] GT2 belts 2x 2m (M3, M4), 4 drive pulleys (M5), 2 idler pulleys (M6)
 - [ ] 4x 608ZZ bearings (M7) or 625ZZ as specified in feeder CAD

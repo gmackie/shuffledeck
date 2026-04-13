@@ -53,6 +53,9 @@ docs/plans/
   assembly-sequence.md      12-phase build instructions
   feeder-bakeoff.md         Feeder candidate test protocol
   market-research.md        Smart poker table market analysis
+  motor-setup-lumen.md      Wiring guide for salvaged Lumen 3D printer motors
+  rfid-felt-test.md         $19 RFID through-felt validation protocol
+  preflight-checklist.md    First power-on safety and test sequence
 ```
 
 ## Quick start

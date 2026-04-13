@@ -261,9 +261,45 @@ static void handle_serial_commands() {
                                   ctx.feeder_exits,
                                   ctx.bin_entries,
                                   ctx.output_count);
+                } else if (strcmp(cmd_buf, "status") == 0) {
+                    Serial.println("TMC2209 driver status:");
+                    const char* axis_names[] = {"Feeder", "Selector X", "Recombine X", "Recombine Z"};
+                    for (uint8_t i = 0; i < 4; i++) {
+                        MotorAxis ax = static_cast<MotorAxis>(i);
+                        bool comm = motor_check_comm(ax);
+                        uint32_t drv = motor_get_status(ax);
+                        Serial.printf("  %s (addr %d): %s  DRV_STATUS=0x%08X\n",
+                                      axis_names[i], i,
+                                      comm ? "COMM_OK" : "COMM_FAIL", drv);
+                    }
+                } else if (strcmp(cmd_buf, "selftest") == 0) {
+                    Serial.println("Running self-test jog on all axes...");
+                    bool ok = motors_selftest_jog();
+                    Serial.printf("Self-test: %s\n", ok ? "PASS" : "FAIL");
+                } else if (strcmp(cmd_buf, "sensors") == 0) {
+                    uint8_t raw = sensors_raw_state();
+                    Serial.printf("Sensors raw: 0x%02X\n", raw);
+                    for (uint8_t i = 0; i < NUM_SENSORS; i++) {
+                        Serial.printf("  %s: %s  events=%d\n",
+                                      sensor_name(i),
+                                      (raw & (1 << i)) ? "BLOCKED" : "clear",
+                                      sensor_event_count(i));
+                    }
+                } else if (strcmp(cmd_buf, "shuffle") == 0) {
+                    if (ctx.state == ShufflerState::IDLE) {
+                        sm_request_shuffle(ctx);
+                        Serial.println("Shuffle started");
+                    } else {
+                        Serial.printf("Can't shuffle in state: %s\n",
+                                      sm_state_name(ctx.state));
+                    }
+                } else if (strcmp(cmd_buf, "service") == 0) {
+                    if (ctx.state == ShufflerState::IDLE) {
+                        sm_request_service(ctx);
+                        Serial.println("Entered service mode. Type 'help' for commands.");
+                    }
                 } else if (strcmp(cmd_buf, "help") == 0) {
-                    Serial.println("Commands: state, help");
-                    Serial.println("Enter SERVICE_MODE for motor jog and sensor commands");
+                    Serial.println("Commands: state, status, selftest, sensors, shuffle, service, help");
                 }
             }
 

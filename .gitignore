@@ -9,6 +9,7 @@ venv/
 *.step.bak
 *.stl.bak
 build/
+cad/renders/*.bin
 
 # PlatformIO (ESP32 firmware)
 firmware/.pio/
