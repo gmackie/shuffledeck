@@ -195,9 +195,13 @@ def _add_slot(
     sx = length if along_x else width
     sy = width if along_x else length
     with BuildPart(mode=Mode.SUBTRACT):
-        Box(sx, sy, depth,
-            align=(Align.CENTER, Align.CENTER, Align.MIN))
-        bd.Location((cx, cy, -0.5))
+        with bd.Locations([(cx, cy, -0.5)]):
+            Box(
+                sx,
+                sy,
+                depth,
+                align=(Align.CENTER, Align.CENTER, Align.MIN),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -214,9 +218,8 @@ def _build_base_plate(
     length = x_end - x_start
     cx = x_start + length / 2.0
     cy = depth / 2.0
-    Box(length, depth, thickness,
-        align=(Align.CENTER, Align.CENTER, Align.MIN))
-    bd.Location((cx, cy, 0))
+    with bd.Locations([(cx, cy, 0)]):
+        Box(length, depth, thickness, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
 def _build_side_rail(
@@ -234,9 +237,8 @@ def _build_side_rail(
     # But we want inner face at Y = 0, so rail body is at Y = [-thickness, 0]
     cy = -thickness / 2.0
     z_base = plate_thickness
-    Box(length, thickness, height,
-        align=(Align.CENTER, Align.CENTER, Align.MIN))
-    bd.Location((cx, cy, z_base))
+    with bd.Locations([(cx, cy, z_base)]):
+        Box(length, thickness, height, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
 def _build_end_stop(
@@ -250,9 +252,8 @@ def _build_end_stop(
     cx = -thickness / 2.0
     cy = depth / 2.0
     z_base = plate_thickness
-    Box(thickness, depth, height,
-        align=(Align.CENTER, Align.CENTER, Align.MIN))
-    bd.Location((cx, cy, z_base))
+    with bd.Locations([(cx, cy, z_base)]):
+        Box(thickness, depth, height, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
 def build_chassis() -> bd.Part:
@@ -291,9 +292,13 @@ def build_chassis() -> bd.Part:
         # Continuous wall along the full length at Y = 0.
         # Inner face is the datum; wall extends into negative Y.
         with BuildPart():
-            Box(CHASSIS_LENGTH, RAIL_THICKNESS, RAIL_HEIGHT,
-                align=(Align.MIN, Align.MAX, Align.MIN))
-            bd.Location((0, 0, PLATE_THICKNESS))
+            with bd.Locations([(0, 0, PLATE_THICKNESS)]):
+                Box(
+                    CHASSIS_LENGTH,
+                    RAIL_THICKNESS,
+                    RAIL_HEIGHT,
+                    align=(Align.MIN, Align.MAX, Align.MIN),
+                )
 
         # ==================================================================
         # 3. FEEDER END STOP (Datum C)
@@ -301,9 +306,13 @@ def build_chassis() -> bd.Part:
         # Transverse wall at X = 0. Inner face is datum; wall extends into
         # negative X.
         with BuildPart():
-            Box(END_STOP_THICKNESS, CHASSIS_DEPTH + RAIL_THICKNESS, END_STOP_HEIGHT,
-                align=(Align.MAX, Align.MIN, Align.MIN))
-            bd.Location((0, -RAIL_THICKNESS, PLATE_THICKNESS))
+            with bd.Locations([(0, -RAIL_THICKNESS, PLATE_THICKNESS)]):
+                Box(
+                    END_STOP_THICKNESS,
+                    CHASSIS_DEPTH + RAIL_THICKNESS,
+                    END_STOP_HEIGHT,
+                    align=(Align.MAX, Align.MIN, Align.MIN),
+                )
 
         # ==================================================================
         # 4. FEEDER MODULE MOUNTING (fixed holes — references Datum C)
@@ -319,12 +328,12 @@ def build_chassis() -> bd.Part:
         ]
         for mx, my in feeder_mount_positions:
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_HEATSET_BORE / 2,
-                    height=M3_HEATSET_LENGTH + 1.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((mx, my, PLATE_THICKNESS - M3_HEATSET_LENGTH))
+                with bd.Locations([(mx, my, PLATE_THICKNESS - M3_HEATSET_LENGTH)]):
+                    Cylinder(
+                        radius=M3_HEATSET_BORE / 2,
+                        height=M3_HEATSET_LENGTH + 1.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # ==================================================================
         # 5. SELECTOR MODULE MOUNTING (slotted holes in X for adjustment)
@@ -366,12 +375,12 @@ def build_chassis() -> bd.Part:
                 # Heat-set insert bores (the bin bank has clearance holes;
                 # the chassis gets the inserts)
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_HEATSET_BORE / 2,
-                        height=M3_HEATSET_LENGTH + 1.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((bx, by, PLATE_THICKNESS - M3_HEATSET_LENGTH))
+                    with bd.Locations([(bx, by, PLATE_THICKNESS - M3_HEATSET_LENGTH)]):
+                        Cylinder(
+                            radius=M3_HEATSET_BORE / 2,
+                            height=M3_HEATSET_LENGTH + 1.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # ==================================================================
         # 7. RECOMBINE MODULE MOUNTING (slotted X for adjustment)
@@ -418,12 +427,15 @@ def build_chassis() -> bd.Part:
         # ==================================================================
         # Shallow recess in the base plate on the right side (high Y)
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(ELECTRONICS_BAY_WIDTH, ELECTRONICS_BAY_DEPTH,
-                ELECTRONICS_BAY_RECESS,
-                align=(Align.MIN, Align.MIN, Align.MIN))
-            bd.Location((ELECTRONICS_BAY_X,
-                         ELECTRONICS_BAY_Y_OFFSET,
-                         PLATE_THICKNESS - ELECTRONICS_BAY_RECESS))
+            with bd.Locations(
+                [(ELECTRONICS_BAY_X, ELECTRONICS_BAY_Y_OFFSET, PLATE_THICKNESS - ELECTRONICS_BAY_RECESS)]
+            ):
+                Box(
+                    ELECTRONICS_BAY_WIDTH,
+                    ELECTRONICS_BAY_DEPTH,
+                    ELECTRONICS_BAY_RECESS,
+                    align=(Align.MIN, Align.MIN, Align.MIN),
+                )
 
         # ESP32 DevKit standoff holes (4x M3 heat-set)
         esp_cx = ELECTRONICS_BAY_X + ELECTRONICS_BAY_WIDTH / 2.0
@@ -431,13 +443,12 @@ def build_chassis() -> bd.Part:
         for dx in (-ESP32_STANDOFF_SPACING_X / 2, ESP32_STANDOFF_SPACING_X / 2):
             for dy in (-ESP32_STANDOFF_SPACING_Y / 2, ESP32_STANDOFF_SPACING_Y / 2):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_HEATSET_BORE / 2,
-                        height=M3_HEATSET_LENGTH + 1.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((esp_cx + dx, esp_cy + dy,
-                                 PLATE_THICKNESS - M3_HEATSET_LENGTH))
+                    with bd.Locations([(esp_cx + dx, esp_cy + dy, PLATE_THICKNESS - M3_HEATSET_LENGTH)]):
+                        Cylinder(
+                            radius=M3_HEATSET_BORE / 2,
+                            height=M3_HEATSET_LENGTH + 1.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # 4x TMC2209 driver board standoffs (2 holes each = 8 total)
         tmc_base_x = ELECTRONICS_BAY_X + 10.0
@@ -449,13 +460,12 @@ def build_chassis() -> bd.Part:
                 for dy in (-TMC2209_STANDOFF_SPACING_Y / 2,
                             TMC2209_STANDOFF_SPACING_Y / 2):
                     with BuildPart(mode=Mode.SUBTRACT):
-                        Cylinder(
-                            radius=M3_HEATSET_BORE / 2,
-                            height=M3_HEATSET_LENGTH + 1.0,
-                            align=(Align.CENTER, Align.CENTER, Align.MIN),
-                        )
-                        bd.Location((board_cx + dx, tmc_base_y + dy,
-                                     PLATE_THICKNESS - M3_HEATSET_LENGTH))
+                        with bd.Locations([(board_cx + dx, tmc_base_y + dy, PLATE_THICKNESS - M3_HEATSET_LENGTH)]):
+                            Cylinder(
+                                radius=M3_HEATSET_BORE / 2,
+                                height=M3_HEATSET_LENGTH + 1.0,
+                                align=(Align.CENTER, Align.CENTER, Align.MIN),
+                            )
 
         # ==================================================================
         # 10. CABLE ROUTING CHANNELS
@@ -464,10 +474,13 @@ def build_chassis() -> bd.Part:
         # (high Y, near electronics bay) for motor and sensor cables.
         cable_y = CHASSIS_DEPTH - 20.0
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(CHASSIS_LENGTH - 40.0, CABLE_CHANNEL_WIDTH, CABLE_CHANNEL_DEPTH,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((CHASSIS_LENGTH / 2.0, cable_y,
-                         PLATE_THICKNESS - CABLE_CHANNEL_DEPTH))
+            with bd.Locations([(CHASSIS_LENGTH / 2.0, cable_y, PLATE_THICKNESS - CABLE_CHANNEL_DEPTH)]):
+                Box(
+                    CHASSIS_LENGTH - 40.0,
+                    CABLE_CHANNEL_WIDTH,
+                    CABLE_CHANNEL_DEPTH,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Transverse channels connecting each module zone to the main channel
         transverse_x_positions = [
@@ -478,10 +491,13 @@ def build_chassis() -> bd.Part:
         ]
         for tx in transverse_x_positions:
             with BuildPart(mode=Mode.SUBTRACT):
-                Box(CABLE_CHANNEL_WIDTH, CHASSIS_DEPTH / 2.0, CABLE_CHANNEL_DEPTH,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN))
-                bd.Location((tx, CHASSIS_DEPTH * 0.75,
-                             PLATE_THICKNESS - CABLE_CHANNEL_DEPTH))
+                with bd.Locations([(tx, CHASSIS_DEPTH * 0.75, PLATE_THICKNESS - CABLE_CHANNEL_DEPTH)]):
+                    Box(
+                        CABLE_CHANNEL_WIDTH,
+                        CHASSIS_DEPTH / 2.0,
+                        CABLE_CHANNEL_DEPTH,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # ==================================================================
         # 11. RUBBER FOOT MOUNTING POINTS (4x corners)
@@ -495,20 +511,20 @@ def build_chassis() -> bd.Part:
         for fx, fy in foot_positions:
             # Through-hole for M3 screw + rubber foot
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_CLEARANCE_HOLE / 2,
-                    height=PLATE_THICKNESS + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((fx, fy, -1.0))
+                with bd.Locations([(fx, fy, -1.0)]):
+                    Cylinder(
+                        radius=M3_CLEARANCE_HOLE / 2,
+                        height=PLATE_THICKNESS + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
             # Counterbore on top surface for screw head clearance
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_HEAD_DIAMETER / 2 + 0.3,
-                    height=2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((fx, fy, PLATE_THICKNESS - 2.0))
+                with bd.Locations([(fx, fy, PLATE_THICKNESS - 2.0)]):
+                    Cylinder(
+                        radius=M3_HEAD_DIAMETER / 2 + 0.3,
+                        height=2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # ==================================================================
         # 12. SECTION SPLIT JOINT FEATURES
@@ -521,12 +537,12 @@ def build_chassis() -> bd.Part:
             # Dowel pin holes (through the full plate thickness + into rail)
             for dy in (DOWEL_PIN_INSET_Y, CHASSIS_DEPTH - DOWEL_PIN_INSET_Y):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=DOWEL_PIN_BORE / 2,
-                        height=PLATE_THICKNESS + RAIL_HEIGHT + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((split_x, dy, -1.0))
+                    with bd.Locations([(split_x, dy, -1.0)]):
+                        Cylinder(
+                            radius=DOWEL_PIN_BORE / 2,
+                            height=PLATE_THICKNESS + RAIL_HEIGHT + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
             # Joint bolt holes — spaced along Y
             bolt_y_start = 30.0
@@ -534,12 +550,12 @@ def build_chassis() -> bd.Part:
             for i in range(JOINT_BOLT_COUNT_Y):
                 by = bolt_y_start + i * bolt_y_step
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=PLATE_THICKNESS + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((split_x, by, -1.0))
+                    with bd.Locations([(split_x, by, -1.0)]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=PLATE_THICKNESS + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # ==================================================================
         # 13. RIGHT SIDE STIFFENING RIB (optional low wall)
@@ -548,9 +564,13 @@ def build_chassis() -> bd.Part:
         # Not a datum — just structural. 10mm tall.
         rib_height = 10.0
         with BuildPart():
-            Box(CHASSIS_LENGTH, RAIL_THICKNESS, rib_height,
-                align=(Align.MIN, Align.MIN, Align.MIN))
-            bd.Location((0, CHASSIS_DEPTH, PLATE_THICKNESS))
+            with bd.Locations([(0, CHASSIS_DEPTH, PLATE_THICKNESS)]):
+                Box(
+                    CHASSIS_LENGTH,
+                    RAIL_THICKNESS,
+                    rib_height,
+                    align=(Align.MIN, Align.MIN, Align.MIN),
+                )
 
     return chassis.part
 
@@ -608,9 +628,13 @@ def build_chassis_section(section: int) -> bd.Part:
 
     with BuildPart() as section_part:
         # Start with a clip box
-        Box(clip_length, clip_depth, clip_height,
-            align=(Align.CENTER, Align.CENTER, Align.MIN))
-        bd.Location((clip_cx, CHASSIS_DEPTH / 2.0 - RAIL_THICKNESS / 2.0, -2.0))
+        with bd.Locations([(clip_cx, CHASSIS_DEPTH / 2.0 - RAIL_THICKNESS / 2.0, -2.0)]):
+            Box(
+                clip_length,
+                clip_depth,
+                clip_height,
+                align=(Align.CENTER, Align.CENTER, Align.MIN),
+            )
 
     # Boolean intersect: section = full AND clip_box
     result = full.intersect(section_part.part)

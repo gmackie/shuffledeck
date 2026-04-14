@@ -154,12 +154,12 @@ def build_selector() -> bd.Part:
         for dx in (-MGN12H_HOLE_SPACING_X / 2, MGN12H_HOLE_SPACING_X / 2):
             for dy in (-MGN12H_HOLE_SPACING_Y / 2, MGN12H_HOLE_SPACING_Y / 2):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=CARRIAGE_HEIGHT + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((dx, dy, -1.0))
+                    with bd.Locations([(dx, dy, -1.0)]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=CARRIAGE_HEIGHT + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # ══════════════════════════════════════════════════════════════
         # 2. CARD GUIDE CHANNEL
@@ -174,16 +174,24 @@ def build_selector() -> bd.Part:
 
         # Outer shell of the guide channel
         with BuildPart():
-            Box(guide_ext_depth, guide_ext_width, GUIDE_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, guide_center_y, guide_base_z))
+            with bd.Locations([(0, guide_center_y, guide_base_z)]):
+                Box(
+                    guide_ext_depth,
+                    guide_ext_width,
+                    GUIDE_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Inner cavity — the card slot (open at bottom by cutting through
         # into the carriage plate)
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(GUIDE_INT_DEPTH, GUIDE_INT_WIDTH, GUIDE_HEIGHT + CARRIAGE_HEIGHT + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, guide_center_y, -1.0))
+            with bd.Locations([(0, guide_center_y, -1.0)]):
+                Box(
+                    GUIDE_INT_DEPTH,
+                    GUIDE_INT_WIDTH,
+                    GUIDE_HEIGHT + CARRIAGE_HEIGHT + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ══════════════════════════════════════════════════════════════
         # 3. CARD ENTRY SLOT (flared top opening)
@@ -198,9 +206,13 @@ def build_selector() -> bd.Part:
         entry_top_z = guide_base_z + GUIDE_HEIGHT
 
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(entry_flare_depth, entry_flare_width, entry_flare_height,
-                align=(Align.CENTER, Align.CENTER, Align.MAX))
-            bd.Location((0, guide_center_y, entry_top_z))
+            with bd.Locations([(0, guide_center_y, entry_top_z)]):
+                Box(
+                    entry_flare_depth,
+                    entry_flare_width,
+                    entry_flare_height,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX),
+                )
 
         # ══════════════════════════════════════════════════════════════
         # 4. BELT CLAMP ATTACHMENT
@@ -213,26 +225,34 @@ def build_selector() -> bd.Part:
         belt_clamp_y = -(CARRIAGE_DEPTH / 2 + BELT_CLAMP_DEPTH / 2)
 
         with BuildPart():
-            Box(BELT_CLAMP_WIDTH, BELT_CLAMP_DEPTH, BELT_CLAMP_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, belt_clamp_y, 0))
+            with bd.Locations([(0, belt_clamp_y, 0)]):
+                Box(
+                    BELT_CLAMP_WIDTH,
+                    BELT_CLAMP_DEPTH,
+                    BELT_CLAMP_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Belt slot through the clamp (horizontal, along X)
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(BELT_CLAMP_WIDTH + 2.0, BELT_SLOT_WIDTH, BELT_SLOT_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, belt_clamp_y, BELT_CLAMP_HEIGHT / 2 - BELT_SLOT_HEIGHT / 2))
+            with bd.Locations([(0, belt_clamp_y, BELT_CLAMP_HEIGHT / 2 - BELT_SLOT_HEIGHT / 2)]):
+                Box(
+                    BELT_CLAMP_WIDTH + 2.0,
+                    BELT_SLOT_WIDTH,
+                    BELT_SLOT_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Belt clamp bolt holes (2x M3, spaced along X)
         belt_bolt_spacing = BELT_CLAMP_WIDTH - 4.0  # inset from edges
         for dx in (-belt_bolt_spacing / 2, belt_bolt_spacing / 2):
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_CLEARANCE_HOLE / 2,
-                    height=BELT_CLAMP_HEIGHT + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((dx, belt_clamp_y, -1.0))
+                with bd.Locations([(dx, belt_clamp_y, -1.0)]):
+                    Cylinder(
+                        radius=M3_CLEARANCE_HOLE / 2,
+                        height=BELT_CLAMP_HEIGHT + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # ══════════════════════════════════════════════════════════════
         # 5. NEMA17 MOTOR MOUNT (at -X end of travel)
@@ -248,9 +268,13 @@ def build_selector() -> bd.Part:
 
         # Motor mount plate (vertical, facing +X)
         with BuildPart():
-            Box(MOTOR_MOUNT_THICKNESS, motor_plate_width, motor_plate_height,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((motor_mount_x, 0, -MGN12H_BLOCK_HEIGHT))
+            with bd.Locations([(motor_mount_x, 0, -MGN12H_BLOCK_HEIGHT)]):
+                Box(
+                    MOTOR_MOUNT_THICKNESS,
+                    motor_plate_width,
+                    motor_plate_height,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # NEMA17 mounting holes (4x M3, 31mm diagonal pattern)
         # Holes go through the plate along X axis
@@ -259,37 +283,37 @@ def build_selector() -> bd.Part:
         for dy in (-half_spacing, half_spacing):
             for dz in (-half_spacing, half_spacing):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=MOTOR_MOUNT_THICKNESS + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    # Rotate cylinder to point along X axis
-                    bd.Location((motor_mount_x - MOTOR_MOUNT_THICKNESS / 2 - 1.0,
-                                 dy, motor_face_center_z + dz))
-                    bd.Rotation((0, 90, 0))
+                    with bd.Locations([
+                        (motor_mount_x - MOTOR_MOUNT_THICKNESS / 2 - 1.0, dy, motor_face_center_z + dz)
+                    ]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=MOTOR_MOUNT_THICKNESS + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                            rotation=(0, 90, 0),
+                        )
 
         # NEMA17 pilot recess (circular pocket on the +X face of the mount)
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=NEMA17_PILOT_DEPTH + 0.5,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((motor_mount_x + MOTOR_MOUNT_THICKNESS / 2 - NEMA17_PILOT_DEPTH,
-                         0, motor_face_center_z))
-            bd.Rotation((0, 90, 0))
+            with bd.Locations([
+                (motor_mount_x + MOTOR_MOUNT_THICKNESS / 2 - NEMA17_PILOT_DEPTH, 0, motor_face_center_z)
+            ]):
+                Cylinder(
+                    radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=NEMA17_PILOT_DEPTH + 0.5,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    rotation=(0, 90, 0),
+                )
 
         # Shaft through-hole
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=MOTOR_MOUNT_THICKNESS + 4.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((motor_mount_x - MOTOR_MOUNT_THICKNESS / 2 - 1.0,
-                         0, motor_face_center_z))
-            bd.Rotation((0, 90, 0))
+            with bd.Locations([(motor_mount_x - MOTOR_MOUNT_THICKNESS / 2 - 1.0, 0, motor_face_center_z)]):
+                Cylinder(
+                    radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=MOTOR_MOUNT_THICKNESS + 4.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    rotation=(0, 90, 0),
+                )
 
         # ── Motor mount base feet ──────────────────────────────────
         # Triangular gussets would be ideal but for scaffold simplicity
@@ -299,10 +323,13 @@ def build_selector() -> bd.Part:
         motor_base_height = 4.0  # mm
 
         with BuildPart():
-            Box(motor_base_depth, motor_base_width, motor_base_height,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((motor_mount_x + motor_base_depth / 2,
-                         0, -MGN12H_BLOCK_HEIGHT))
+            with bd.Locations([(motor_mount_x + motor_base_depth / 2, 0, -MGN12H_BLOCK_HEIGHT)]):
+                Box(
+                    motor_base_depth,
+                    motor_base_width,
+                    motor_base_height,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Base mounting holes (4x M3 at corners of the flange)
         base_hole_inset_x = 5.0
@@ -312,14 +339,18 @@ def build_selector() -> bd.Part:
             for dy_off in (-motor_base_width / 2 + base_hole_inset_y,
                            motor_base_width / 2 - base_hole_inset_y):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=motor_base_height + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((motor_mount_x + motor_base_depth / 2 + dx_off,
-                                 dy_off,
-                                 -MGN12H_BLOCK_HEIGHT - 1.0))
+                    with bd.Locations([
+                        (
+                            motor_mount_x + motor_base_depth / 2 + dx_off,
+                            dy_off,
+                            -MGN12H_BLOCK_HEIGHT - 1.0,
+                        )
+                    ]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=motor_base_height + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
     return selector.part
 

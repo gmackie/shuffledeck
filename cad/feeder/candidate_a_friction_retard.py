@@ -135,54 +135,66 @@ def build_feeder_candidate_a() -> bd.Part:
 
         # Hollow interior
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(HOPPER_INT_W, HOPPER_INT_L, HOPPER_DEPTH,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, HOPPER_WALL))
+            with bd.Locations([(0, 0, HOPPER_WALL)]):
+                Box(
+                    HOPPER_INT_W,
+                    HOPPER_INT_L,
+                    HOPPER_DEPTH,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Exit throat slot
         throat_width = CARD_WIDTH + 2 * PRINT_TOL_DEFAULT
         throat_y = -(HOPPER_EXT_L / 2)
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(throat_width, HOPPER_WALL + 2.0, EXIT_THROAT_GAP,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, throat_y, HOPPER_WALL))
+            with bd.Locations([(0, throat_y, HOPPER_WALL)]):
+                Box(
+                    throat_width,
+                    HOPPER_WALL + 2.0,
+                    EXIT_THROAT_GAP,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # NEMA17 mounting plate
         motor_plate_z = -MOUNTING_PLATE_THICKNESS
         with BuildPart():
-            Box(NEMA17_FACE + 10.0, NEMA17_FACE + 10.0, MOUNTING_PLATE_THICKNESS,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, motor_plate_z))
+            with bd.Locations([(0, 0, motor_plate_z)]):
+                Box(
+                    NEMA17_FACE + 10.0,
+                    NEMA17_FACE + 10.0,
+                    MOUNTING_PLATE_THICKNESS,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # NEMA17 mounting holes
         half_spacing = NEMA17_HOLE_SPACING / 2
         for dx in (-half_spacing, half_spacing):
             for dy in (-half_spacing, half_spacing):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=MOUNTING_PLATE_THICKNESS + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((dx, dy, motor_plate_z - 1.0))
+                    with bd.Locations([(dx, dy, motor_plate_z - 1.0)]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=MOUNTING_PLATE_THICKNESS + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # Pilot hole
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=MOUNTING_PLATE_THICKNESS + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((0, 0, motor_plate_z - 1.0))
+            with bd.Locations([(0, 0, motor_plate_z - 1.0)]):
+                Cylinder(
+                    radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=MOUNTING_PLATE_THICKNESS + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Shaft through-hole
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=HOPPER_WALL + MOUNTING_PLATE_THICKNESS + 4.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((0, 0, motor_plate_z - 1.0))
+            with bd.Locations([(0, 0, motor_plate_z - 1.0)]):
+                Cylinder(
+                    radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=HOPPER_WALL + MOUNTING_PLATE_THICKNESS + 4.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ══════════════════════════════════════════════════════════════
         # CANDIDATE A: FRICTION ROLLER + RETARD PAD SINGULATION
@@ -197,13 +209,12 @@ def build_feeder_candidate_a() -> bd.Part:
         # so the O-ring can spin freely.
         roller_pocket_z = 0.0  # starts at bottom of hopper floor
         with BuildPart(mode=Mode.SUBTRACT):
-            # Main roller pocket — cylindrical bore for the O-ring
-            Cylinder(
-                radius=(ROLLER_OD / 2) + PRINT_TOL_DEFAULT,
-                height=HOPPER_WALL + 1.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((0, 0, -0.5))  # cut through entire floor
+            with bd.Locations([(0, 0, -0.5)]):
+                Cylinder(
+                    radius=(ROLLER_OD / 2) + PRINT_TOL_DEFAULT,
+                    height=HOPPER_WALL + 1.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ── 2. Bearing pockets in side walls ───────────────────────────
         # Two 625ZZ bearings support the roller shaft. They press into
@@ -213,44 +224,26 @@ def build_feeder_candidate_a() -> bd.Part:
         for x_sign in (-1, +1):
             wall_center_x = x_sign * (HOPPER_INT_W / 2 + HOPPER_WALL / 2)
             with BuildPart(mode=Mode.SUBTRACT):
-                # Bearing bore — cut into side wall from inside
-                Cylinder(
-                    radius=BEARING_POCKET_RADIUS,
-                    height=BEARING_POCKET_DEPTH,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                # Orient horizontally (along X) into the wall
-                bd.Location((
-                    x_sign * (HOPPER_INT_W / 2 - BEARING_POCKET_DEPTH / 2),
-                    0,
-                    bearing_center_z,
-                ))
-                # Rotate to bore into the wall along X axis
-            # Actually: use a horizontal cylinder subtraction.
-            # Build123d Cylinder is along Z by default; we need it along X.
-            with BuildPart(mode=Mode.SUBTRACT):
-                with bd.BuildPart() as _brg:
+                with bd.Locations([(wall_center_x, 0, bearing_center_z)]):
                     Cylinder(
                         radius=BEARING_POCKET_RADIUS,
                         height=HOPPER_WALL + 2.0,
                         align=(Align.CENTER, Align.CENTER, Align.CENTER),
-                        rotation=(0, 90, 0),  # rotate to lie along X
+                        rotation=(0, 90, 0),
                     )
-                bd.Location((wall_center_x, 0, bearing_center_z))
 
         # ── 3. Eccentric bushing bore (one side) ──────────────────────
         # The right-side bearing gets an oversized bore to accept an
         # eccentric bushing for roller height fine-tuning.
         eccentric_wall_x = +(HOPPER_INT_W / 2 + HOPPER_WALL / 2)
         with BuildPart(mode=Mode.SUBTRACT):
-            with bd.BuildPart() as _ecc:
+            with bd.Locations([(eccentric_wall_x, 0, bearing_center_z)]):
                 Cylinder(
                     radius=(ECCENTRIC_BUSHING_OD / 2) + PRINT_TOL_TIGHT,
                     height=HOPPER_WALL + 2.0,
                     align=(Align.CENTER, Align.CENTER, Align.CENTER),
                     rotation=(0, 90, 0),
                 )
-            bd.Location((eccentric_wall_x, 0, bearing_center_z))
 
         # ── 4. Retard pad cavity ───────────────────────────────────────
         # The retard pad sits above the roller, pressing down on the
@@ -268,37 +261,26 @@ def build_feeder_candidate_a() -> bd.Part:
 
         # Main cavity for the retard pad holder assembly
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(
-                RETARD_HOLDER_WIDTH,
-                RETARD_HOLDER_LENGTH + SPRING_POCKET_DEPTH + 5.0,
-                RETARD_PAD_THICKNESS + RETARD_HOLDER_WALL * 2 + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((
-                0,
-                retard_cavity_y,
-                retard_cavity_z,
-            ))
+            with bd.Locations([(0, retard_cavity_y, retard_cavity_z)]):
+                Box(
+                    RETARD_HOLDER_WIDTH,
+                    RETARD_HOLDER_LENGTH + SPRING_POCKET_DEPTH + 5.0,
+                    RETARD_PAD_THICKNESS + RETARD_HOLDER_WALL * 2 + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ── 5. Dovetail slide channel for retard pad removal ──────────
         # Runs along X from the right wall inward — the retard pad
         # holder slides out to the right for replacement.
         dovetail_entry_x = HOPPER_EXT_W / 2  # right outer wall
         with BuildPart(mode=Mode.SUBTRACT):
-            # Simplified as a rectangular channel (true dovetail would
-            # need a trapezoidal profile; this is printable as a slot
-            # with slight draft).
-            Box(
-                HOPPER_WALL + 4.0,  # through the wall + clearance
-                RETARD_HOLDER_LENGTH + 1.0,
-                RETARD_PAD_THICKNESS + RETARD_HOLDER_WALL + 1.0,
-                align=(Align.MAX, Align.CENTER, Align.MIN),
-            )
-            bd.Location((
-                dovetail_entry_x + 1.0,
-                retard_cavity_y,
-                retard_cavity_z,
-            ))
+            with bd.Locations([(dovetail_entry_x + 1.0, retard_cavity_y, retard_cavity_z)]):
+                Box(
+                    HOPPER_WALL + 4.0,
+                    RETARD_HOLDER_LENGTH + 1.0,
+                    RETARD_PAD_THICKNESS + RETARD_HOLDER_WALL + 1.0,
+                    align=(Align.MAX, Align.CENTER, Align.MIN),
+                )
 
         # ── 6. Shoulder bolt pivot holes (retard pad holder) ──────────
         # Two holes through the side walls for the shoulder bolt that
@@ -307,44 +289,38 @@ def build_feeder_candidate_a() -> bd.Part:
         for x_sign in (-1, +1):
             wall_x = x_sign * (HOPPER_INT_W / 2 + HOPPER_WALL / 2)
             with BuildPart(mode=Mode.SUBTRACT):
-                with bd.BuildPart() as _pivot:
+                with bd.Locations([(wall_x, retard_cavity_y, pivot_z)]):
                     Cylinder(
                         radius=SHOULDER_BOLT_BORE / 2,
                         height=HOPPER_WALL + 2.0,
                         align=(Align.CENTER, Align.CENTER, Align.CENTER),
                         rotation=(0, 90, 0),
                     )
-                bd.Location((wall_x, retard_cavity_y, pivot_z))
 
         # ── 7. Spring pocket (behind retard pad) ──────────────────────
         # Cylindrical pocket in the hopper floor/wall behind the retard
         # pad (positive Y side) for the compression spring.
         spring_center_y = retard_cavity_y + RETARD_HOLDER_LENGTH / 2 + SPRING_POCKET_DIA / 2 + 2.0
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=SPRING_POCKET_DIA / 2 + PRINT_TOL_DEFAULT,
-                height=SPRING_POCKET_DEPTH,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((0, spring_center_y, retard_cavity_z))
+            with bd.Locations([(0, spring_center_y, retard_cavity_z)]):
+                Cylinder(
+                    radius=SPRING_POCKET_DIA / 2 + PRINT_TOL_DEFAULT,
+                    height=SPRING_POCKET_DEPTH,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ── 8. Set screw access hole (spring preload adjustment) ──────
         # M3 tapped hole from the outside rear wall into the spring
         # pocket, allowing a set screw to adjust spring preload.
         set_screw_y = HOPPER_EXT_L / 2  # rear outer wall
         with BuildPart(mode=Mode.SUBTRACT):
-            with bd.BuildPart() as _ss:
+            with bd.Locations([(0, set_screw_y, retard_cavity_z + SPRING_POCKET_DIA / 2)]):
                 Cylinder(
                     radius=SET_SCREW_ACCESS_DIA / 2,
                     height=HOPPER_WALL + 4.0,
                     align=(Align.CENTER, Align.CENTER, Align.CENTER),
-                    rotation=(90, 0, 0),  # along Y axis into rear wall
+                    rotation=(90, 0, 0),
                 )
-            bd.Location((
-                0,
-                set_screw_y,
-                retard_cavity_z + SPRING_POCKET_DIA / 2,
-            ))
 
         # ── 9. Exit guide channel ─────────────────────────────────────
         # After the nip zone, a short channel guides the singulated card
@@ -358,39 +334,35 @@ def build_feeder_candidate_a() -> bd.Part:
         for x_sign in (-1, +1):
             rail_x = x_sign * (throat_width / 2 + EXIT_GUIDE_WALL / 2)
             with BuildPart():
-                Box(
-                    EXIT_GUIDE_WALL,
-                    EXIT_GUIDE_LENGTH,
-                    EXIT_GUIDE_HEIGHT + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((rail_x, exit_guide_center_y, guide_floor_z))
+                with bd.Locations([(rail_x, exit_guide_center_y, guide_floor_z)]):
+                    Box(
+                        EXIT_GUIDE_WALL,
+                        EXIT_GUIDE_LENGTH,
+                        EXIT_GUIDE_HEIGHT + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # Top cover of exit guide (prevents card from lifting)
         with BuildPart():
-            Box(
-                throat_width + 2 * EXIT_GUIDE_WALL,
-                EXIT_GUIDE_LENGTH,
-                EXIT_GUIDE_WALL,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((
-                0,
-                exit_guide_center_y,
-                guide_floor_z + EXIT_GUIDE_HEIGHT + 2.0,
-            ))
+            with bd.Locations([(0, exit_guide_center_y, guide_floor_z + EXIT_GUIDE_HEIGHT + 2.0)]):
+                Box(
+                    throat_width + 2 * EXIT_GUIDE_WALL,
+                    EXIT_GUIDE_LENGTH,
+                    EXIT_GUIDE_WALL,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ── 10. Sensor mount bosses (from skeleton) ───────────────────
         sensor_boss_height = 8.0
         sensor_boss_radius = 3.0
         for x_offset in [-throat_width / 2 - 5.0, throat_width / 2 + 5.0]:
             with BuildPart():
-                Cylinder(
-                    radius=sensor_boss_radius,
-                    height=sensor_boss_height,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((x_offset, throat_y, HOPPER_WALL))
+                with bd.Locations([(x_offset, throat_y, HOPPER_WALL)]):
+                    Cylinder(
+                        radius=sensor_boss_radius,
+                        height=sensor_boss_height,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
     return feeder.part
 

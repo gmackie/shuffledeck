@@ -30,6 +30,7 @@ from build123d import (
 # ---------------------------------------------------------------------------
 # Import all build functions
 # ---------------------------------------------------------------------------
+from assembly_layout import render_locations
 from chassis.chassis import build_chassis, chassis_info
 from feeder.feeder import build_feeder
 from feeder.candidate_a_friction_retard import build_feeder_candidate_a
@@ -48,20 +49,6 @@ from chassis.chassis import PLATE_THICKNESS
 
 _ci = chassis_info()
 _bb = bin_bank_info()
-
-DATUM_A_Z = _ci["datum_a_z"]  # top of base plate (Z where modules sit)
-
-# Module positions (X, Y, Z) — X is the long axis of the machine
-# Y=0 is Datum B (left side rail inner face). Most modules align near Y=0.
-POSITIONS = {
-    "chassis":   (0, 0, 0),
-    "feeder":    (_ci["feeder_zone"][0] + 50.0, 0, DATUM_A_Z),
-    "feeder_a":  (_ci["feeder_zone"][0] + 50.0, 0, DATUM_A_Z),
-    "bin_bank":  (_ci["bin_bank_zone"][0], 0, DATUM_A_Z),
-    "selector":  (_ci["bin_bank_zone"][0], 0, DATUM_A_Z + _bb["bank_height"]),
-    "recombine": (_ci["bin_bank_zone"][0], _bb["bank_depth"] + 5.0, DATUM_A_Z),
-    "output":    (_ci["output_zone"][0], 0, DATUM_A_Z),
-}
 
 # Exploded view Z offsets — layered for visual clarity
 EXPLODE_Z_OFFSETS = {
@@ -117,7 +104,8 @@ def build_all_parts() -> dict[str, bd.Shape]:
 
 def position_part(part: bd.Shape, name: str, explode: bool = False) -> bd.Shape:
     """Move a part to its assembly position, optionally with exploded Z offset."""
-    x, y, z = POSITIONS[name]
+    locations = render_locations({name: part})
+    x, y, z = tuple(locations[name].position)
     if explode:
         z += EXPLODE_Z_OFFSETS.get(name, 0)
     return part.moved(Location((x, y, z)))
@@ -125,9 +113,13 @@ def position_part(part: bd.Shape, name: str, explode: bool = False) -> bd.Shape:
 
 def make_assembly(parts: dict, explode: bool = False) -> bd.Compound:
     """Position all parts and combine into a single Compound."""
+    locations = render_locations(parts)
     positioned = []
     for name, part in parts.items():
-        positioned.append(position_part(part, name, explode=explode))
+        x, y, z = tuple(locations[name].position)
+        if explode:
+            z += EXPLODE_Z_OFFSETS.get(name, 0)
+        positioned.append(part.moved(Location((x, y, z))))
     return Compound(children=positioned)
 
 

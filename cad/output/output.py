@@ -102,17 +102,25 @@ def build_output_tray() -> bd.Part:
 
         # ── 2. Hollow out the card pocket ──────────────────────────────
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(POCKET_WIDTH, POCKET_DEPTH, POCKET_HEIGHT,
-                align=(Align.CENTER, Align.MAX, Align.MIN))
-            bd.Location((0, 0, TRAY_FLOOR))
+            with bd.Locations([(0, 0, TRAY_FLOOR)]):
+                Box(
+                    POCKET_WIDTH,
+                    POCKET_DEPTH,
+                    POCKET_HEIGHT,
+                    align=(Align.CENTER, Align.MAX, Align.MIN),
+                )
 
         # ── 3. Open front — remove the front wall for dealer pickup ───
         # The front face is at Y=0 (Align.MAX places rear at Y=0,
         # so front is at Y=-TRAY_EXT_DEPTH).
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(FRONT_OPENING_WIDTH, TRAY_WALL + 2.0, FRONT_OPENING_HEIGHT,
-                align=(Align.CENTER, Align.MIN, Align.MIN))
-            bd.Location((0, -TRAY_EXT_DEPTH + TRAY_WALL - 1.0, TRAY_FLOOR))
+            with bd.Locations([(0, -TRAY_EXT_DEPTH + TRAY_WALL - 1.0, TRAY_FLOOR)]):
+                Box(
+                    FRONT_OPENING_WIDTH,
+                    TRAY_WALL + 2.0,
+                    FRONT_OPENING_HEIGHT,
+                    align=(Align.CENTER, Align.MIN, Align.MIN),
+                )
 
         # ── 4. Funnel entry chamfer ────────────────────────────────────
         # Wider opening at the top of the side guides to square cards.
@@ -122,9 +130,13 @@ def build_output_tray() -> bd.Part:
         funnel_h = FUNNEL_CHAMFER
 
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(funnel_w, funnel_d, funnel_h,
-                align=(Align.CENTER, Align.MAX, Align.MAX))
-            bd.Location((0, 0, TRAY_EXT_HEIGHT))
+            with bd.Locations([(0, 0, TRAY_EXT_HEIGHT)]):
+                Box(
+                    funnel_w,
+                    funnel_d,
+                    funnel_h,
+                    align=(Align.CENTER, Align.MAX, Align.MAX),
+                )
 
         # ── 5. Rear backstop spring pockets ────────────────────────────
         # Two cylindrical bores into the rear wall for compression springs.
@@ -134,22 +146,24 @@ def build_output_tray() -> bd.Part:
         spring_spacing = BACKSTOP_SLOT_WIDTH / 2  # symmetric placement
         for dx in (-spring_spacing / 2, spring_spacing / 2):
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=SPRING_BORE_DIA / 2,
-                    height=SPRING_BORE_DEPTH,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                # Bore goes into the rear wall along Y axis
-                bd.Location((dx, 0, TRAY_FLOOR + POCKET_HEIGHT / 2))
-                bd.Rotation((90, 0, 0))
+                with bd.Locations([(dx, 0, TRAY_FLOOR + POCKET_HEIGHT / 2)]):
+                    Cylinder(
+                        radius=SPRING_BORE_DIA / 2,
+                        height=SPRING_BORE_DEPTH,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        rotation=(90, 0, 0),
+                    )
 
         # Backstop travel slot — vertical slot in rear wall for backstop
         # plate to slide through
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(BACKSTOP_SLOT_WIDTH, TRAY_WALL + BACKSTOP_TRAVEL,
-                BACKSTOP_SLOT_HEIGHT,
-                align=(Align.CENTER, Align.MAX, Align.MIN))
-            bd.Location((0, 0, TRAY_FLOOR + 1.0))
+            with bd.Locations([(0, 0, TRAY_FLOOR + 1.0)]):
+                Box(
+                    BACKSTOP_SLOT_WIDTH,
+                    TRAY_WALL + BACKSTOP_TRAVEL,
+                    BACKSTOP_SLOT_HEIGHT,
+                    align=(Align.CENTER, Align.MAX, Align.MIN),
+                )
 
         # ── 6. Chassis mounting holes ──────────────────────────────────
         # Four M3 heat-set insert bores at the base corners.
@@ -165,12 +179,12 @@ def build_output_tray() -> bd.Part:
         ]
         for mx, my in mount_positions:
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_HEATSET_BORE / 2,
-                    height=M3_HEATSET_LENGTH + 1.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((mx, my, 0))
+                with bd.Locations([(mx, my, 0)]):
+                    Cylinder(
+                        radius=M3_HEATSET_BORE / 2,
+                        height=M3_HEATSET_LENGTH + 1.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
     return tray.part
 

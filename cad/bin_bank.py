@@ -101,9 +101,13 @@ def build_bin_bank(
 
             # Main cavity (card stack volume)
             with BuildPart(mode=Mode.SUBTRACT):
-                Box(int_w, int_d, int_h,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN))
-                bd.Location((cx, 0, floor))
+                with bd.Locations([(cx, 0, floor)]):
+                    Box(
+                        int_w,
+                        int_d,
+                        int_h,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
             # Funnel entry — a wider box at the top that creates the
             # chamfered lead-in. We cut a tapered shape by stacking two
@@ -112,9 +116,13 @@ def build_bin_bank(
             # chamfer we cut the funnel as a slightly wider pocket at
             # the top of the bin.
             with BuildPart(mode=Mode.SUBTRACT):
-                Box(funnel_w, funnel_d, funnel_h,
-                    align=(Align.CENTER, Align.CENTER, Align.MAX))
-                bd.Location((cx, 0, cell_h))
+                with bd.Locations([(cx, 0, cell_h)]):
+                    Box(
+                        funnel_w,
+                        funnel_d,
+                        funnel_h,
+                        align=(Align.CENTER, Align.CENTER, Align.MAX),
+                    )
 
         # ── Chamfer top edges of the entire bank ────────────────────
         # (Build123d chamfer on specific edges would be ideal, but for
@@ -139,12 +147,12 @@ def build_bin_bank(
         ]
         for mx, my in mount_positions:
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_HEATSET_BORE / 2,
-                    height=M3_HEATSET_LENGTH + 1.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((mx, my, 0))
+                with bd.Locations([(mx, my, 0)]):
+                    Cylinder(
+                        radius=M3_HEATSET_BORE / 2,
+                        height=M3_HEATSET_LENGTH + 1.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
     return bank.part
 

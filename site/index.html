@@ -1741,8 +1741,9 @@
 
       // Load GLB model
       const loader = new GLTFLoader();
+      const modelUrl = 'assembly.glb?v=20260414-hero-refresh';
       loader.load(
-        'assembly.glb',
+        modelUrl,
         function (gltf) {
           const model = gltf.scene;
           // Materials are baked into the GLB by render_hero.py — no override needed.

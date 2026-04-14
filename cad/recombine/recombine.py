@@ -189,35 +189,45 @@ def build_recombine() -> bd.Part:
             inner_w = PUSHER_PLATE_WIDTH - 2 * FLEX_ZONE_WIDTH
             inner_d = PUSHER_PLATE_DEPTH - 2 * FLEX_ZONE_WIDTH
             with BuildPart(mode=Mode.SUBTRACT):
-                # Outer perimeter pocket (top surface step)
-                Box(PUSHER_PLATE_WIDTH, PUSHER_PLATE_DEPTH, FLEX_ZONE_STEP,
-                    align=(Align.CENTER, Align.CENTER, Align.MAX))
-                bd.Location((0, 0, PUSHER_PLATE_THICKNESS))
+                with bd.Locations([(0, 0, PUSHER_PLATE_THICKNESS)]):
+                    Box(
+                        PUSHER_PLATE_WIDTH,
+                        PUSHER_PLATE_DEPTH,
+                        FLEX_ZONE_STEP,
+                        align=(Align.CENTER, Align.CENTER, Align.MAX),
+                    )
             # Re-add the rigid center island
             with BuildPart():
-                Box(inner_w, inner_d, FLEX_ZONE_STEP,
-                    align=(Align.CENTER, Align.CENTER, Align.MAX))
-                bd.Location((0, 0, PUSHER_PLATE_THICKNESS))
+                with bd.Locations([(0, 0, PUSHER_PLATE_THICKNESS)]):
+                    Box(
+                        inner_w,
+                        inner_d,
+                        FLEX_ZONE_STEP,
+                        align=(Align.CENTER, Align.CENTER, Align.MAX),
+                    )
 
             # 1b. Sensor mounting boss — small raised boss on the underside
             # of the pusher plate for a microswitch lever or IR reflective
             # sensor facing downward to detect stack contact.
             with BuildPart():
-                Box(SENSOR_BOSS_WIDTH, SENSOR_BOSS_DEPTH, SENSOR_BOSS_HEIGHT,
-                    align=(Align.CENTER, Align.CENTER, Align.MAX))
-                # Boss hangs below the plate (negative Z)
-                bd.Location((0, 0, 0))
+                with bd.Locations([(0, 0, 0)]):
+                    Box(
+                        SENSOR_BOSS_WIDTH,
+                        SENSOR_BOSS_DEPTH,
+                        SENSOR_BOSS_HEIGHT,
+                        align=(Align.CENTER, Align.CENTER, Align.MAX),
+                    )
 
             # Sensor mounting holes (2x M2 through the boss)
             for dx in (-SENSOR_MOUNT_HOLE_SPACING / 2,
                         SENSOR_MOUNT_HOLE_SPACING / 2):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=SENSOR_MOUNT_HOLE_DIA / 2,
-                        height=SENSOR_BOSS_HEIGHT + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((dx, 0, -SENSOR_BOSS_HEIGHT - 1.0))
+                    with bd.Locations([(dx, 0, -SENSOR_BOSS_HEIGHT - 1.0)]):
+                        Cylinder(
+                            radius=SENSOR_MOUNT_HOLE_DIA / 2,
+                            height=SENSOR_BOSS_HEIGHT + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # ── 2. Collection / accumulator tray ───────────────────────────
         # Positioned above the pusher mechanism, offset in Z.
@@ -229,32 +239,46 @@ def build_recombine() -> bd.Part:
         tray_ext_h = TRAY_GUIDE_HEIGHT + TRAY_FLOOR_THICKNESS
 
         with BuildPart():
-            Box(tray_ext_w, tray_ext_d, tray_ext_h,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, tray_z_offset))
+            with bd.Locations([(0, 0, tray_z_offset)]):
+                Box(
+                    tray_ext_w,
+                    tray_ext_d,
+                    tray_ext_h,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Hollow interior
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(TRAY_INT_WIDTH, TRAY_INT_DEPTH, TRAY_GUIDE_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, tray_z_offset + TRAY_FLOOR_THICKNESS))
+            with bd.Locations([(0, 0, tray_z_offset + TRAY_FLOOR_THICKNESS)]):
+                Box(
+                    TRAY_INT_WIDTH,
+                    TRAY_INT_DEPTH,
+                    TRAY_GUIDE_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Funnel chamfer — wider opening at the top for card alignment
         funnel_w = TRAY_INT_WIDTH + 2 * TRAY_FUNNEL_CHAMFER
         funnel_d = TRAY_INT_DEPTH + 2 * TRAY_FUNNEL_CHAMFER
         funnel_h = TRAY_FUNNEL_CHAMFER
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(funnel_w, funnel_d, funnel_h,
-                align=(Align.CENTER, Align.CENTER, Align.MAX))
-            bd.Location((0, 0, tray_z_offset + tray_ext_h))
+            with bd.Locations([(0, 0, tray_z_offset + tray_ext_h)]):
+                Box(
+                    funnel_w,
+                    funnel_d,
+                    funnel_h,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX),
+                )
 
         # Floor slot — through-hole for pusher plate to rise into tray
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(PUSHER_PLATE_WIDTH + 2 * PRINT_TOL_DEFAULT,
-                PUSHER_PLATE_DEPTH + 2 * PRINT_TOL_DEFAULT,
-                TRAY_FLOOR_THICKNESS + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, tray_z_offset - 1.0))
+            with bd.Locations([(0, 0, tray_z_offset - 1.0)]):
+                Box(
+                    PUSHER_PLATE_WIDTH + 2 * PRINT_TOL_DEFAULT,
+                    PUSHER_PLATE_DEPTH + 2 * PRINT_TOL_DEFAULT,
+                    TRAY_FLOOR_THICKNESS + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # ── 3. Elevator frame ─────────────────────────────────────────
         # Vertical frame that guides the pusher plate up and down.
@@ -263,19 +287,26 @@ def build_recombine() -> bd.Part:
 
         # Main frame body (C-channel shape around the pusher travel)
         with BuildPart():
-            Box(ELEVATOR_FRAME_WIDTH, ELEVATOR_FRAME_DEPTH, ELEVATOR_FRAME_HEIGHT,
-                align=(Align.CENTER, Align.MAX, Align.MIN))
-            bd.Location((0, -TRAY_INT_DEPTH / 2, elev_z))
+            with bd.Locations([(0, -TRAY_INT_DEPTH / 2, elev_z)]):
+                Box(
+                    ELEVATOR_FRAME_WIDTH,
+                    ELEVATOR_FRAME_DEPTH,
+                    ELEVATOR_FRAME_HEIGHT,
+                    align=(Align.CENTER, Align.MAX, Align.MIN),
+                )
 
         # Hollow out the travel channel for the pusher plate
         channel_w = PUSHER_PLATE_WIDTH + 2 * PRINT_TOL_DEFAULT
         channel_d = ELEVATOR_FRAME_DEPTH - ELEVATOR_FRAME_WALL
         channel_h = ELEVATOR_TRAVEL + 2.0
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(channel_w, channel_d, channel_h,
-                align=(Align.CENTER, Align.MAX, Align.MIN))
-            bd.Location((0, -TRAY_INT_DEPTH / 2 + ELEVATOR_FRAME_WALL,
-                         elev_z + ELEVATOR_FRAME_WALL))
+            with bd.Locations([(0, -TRAY_INT_DEPTH / 2 + ELEVATOR_FRAME_WALL, elev_z + ELEVATOR_FRAME_WALL)]):
+                Box(
+                    channel_w,
+                    channel_d,
+                    channel_h,
+                    align=(Align.CENTER, Align.MAX, Align.MIN),
+                )
 
         # Vertical guide slots (two slots for linear rod or rail guidance)
         guide_slot_width = 8.0
@@ -283,10 +314,13 @@ def build_recombine() -> bd.Part:
         for x_sign in (-1, 1):
             gx = x_sign * (PUSHER_PLATE_WIDTH / 2 + ELEVATOR_FRAME_WALL / 2)
             with BuildPart(mode=Mode.SUBTRACT):
-                Box(guide_slot_width, guide_slot_depth, ELEVATOR_TRAVEL,
-                    align=(Align.CENTER, Align.MAX, Align.MIN))
-                bd.Location((gx, -TRAY_INT_DEPTH / 2 + 1.0,
-                             elev_z + ELEVATOR_FRAME_WALL))
+                with bd.Locations([(gx, -TRAY_INT_DEPTH / 2 + 1.0, elev_z + ELEVATOR_FRAME_WALL)]):
+                    Box(
+                        guide_slot_width,
+                        guide_slot_depth,
+                        ELEVATOR_TRAVEL,
+                        align=(Align.CENTER, Align.MAX, Align.MIN),
+                    )
 
         # ── 4. Z-axis motor mount (28BYJ-48 or micro servo) ──────────
         z_motor_z = elev_z + ELEVATOR_FRAME_HEIGHT / 2
@@ -294,40 +328,47 @@ def build_recombine() -> bd.Part:
 
         # Mount bracket
         with BuildPart():
-            Box(Z_MOTOR_MOUNT_WIDTH, Z_MOTOR_MOUNT_THICKNESS, Z_MOTOR_MOUNT_HEIGHT,
-                align=(Align.CENTER, Align.MAX, Align.CENTER))
-            bd.Location((0, z_motor_y, z_motor_z))
+            with bd.Locations([(0, z_motor_y, z_motor_z)]):
+                Box(
+                    Z_MOTOR_MOUNT_WIDTH,
+                    Z_MOTOR_MOUNT_THICKNESS,
+                    Z_MOTOR_MOUNT_HEIGHT,
+                    align=(Align.CENTER, Align.MAX, Align.CENTER),
+                )
 
         # Motor shaft through-hole
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=Z_MOTOR_FACE / 2 + PRINT_TOL_DEFAULT,
-                height=Z_MOTOR_MOUNT_THICKNESS + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((0, z_motor_y + 1.0, z_motor_z))
-            bd.Rotation((90, 0, 0))
+            with bd.Locations([(0, z_motor_y + 1.0, z_motor_z)]):
+                Cylinder(
+                    radius=Z_MOTOR_FACE / 2 + PRINT_TOL_DEFAULT,
+                    height=Z_MOTOR_MOUNT_THICKNESS + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    rotation=(90, 0, 0),
+                )
 
         # Motor mounting holes (2x for 28BYJ-48 tab pattern)
         for dx in (-Z_MOTOR_HOLE_SPACING / 2, Z_MOTOR_HOLE_SPACING / 2):
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=Z_MOTOR_HOLE_DIA / 2,
-                    height=Z_MOTOR_MOUNT_THICKNESS + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((dx, z_motor_y + 1.0, z_motor_z))
-                bd.Rotation((90, 0, 0))
+                with bd.Locations([(dx, z_motor_y + 1.0, z_motor_z)]):
+                    Cylinder(
+                        radius=Z_MOTOR_HOLE_DIA / 2,
+                        height=Z_MOTOR_MOUNT_THICKNESS + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        rotation=(90, 0, 0),
+                    )
 
         # ── 5. Linear rail mount plate (MGN12H, X axis) ──────────────
         # Horizontal plate that the rail screws onto, spans the bin bank.
         rail_plate_z = -RAIL_MOUNT_PLATE_THICKNESS
 
         with BuildPart():
-            Box(RAIL_MOUNT_PLATE_WIDTH, RAIL_MOUNT_PLATE_HEIGHT,
-                RAIL_MOUNT_PLATE_THICKNESS,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((0, 0, rail_plate_z))
+            with bd.Locations([(0, 0, rail_plate_z)]):
+                Box(
+                    RAIL_MOUNT_PLATE_WIDTH,
+                    RAIL_MOUNT_PLATE_HEIGHT,
+                    RAIL_MOUNT_PLATE_THICKNESS,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Rail mounting holes — M3, spaced every 20 mm along rail length
         import math
@@ -336,12 +377,12 @@ def build_recombine() -> bd.Part:
         for i in range(rail_hole_count):
             hx = rail_start_x + i * 20.0
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=M3_CLEARANCE_HOLE / 2,
-                    height=RAIL_MOUNT_PLATE_THICKNESS + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((hx, 0, rail_plate_z - 1.0))
+                with bd.Locations([(hx, 0, rail_plate_z - 1.0)]):
+                    Cylinder(
+                        radius=M3_CLEARANCE_HOLE / 2,
+                        height=RAIL_MOUNT_PLATE_THICKNESS + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    )
 
         # Chassis mounting holes — M3 heat-set inserts at plate corners
         for cx in (-RAIL_MOUNT_PLATE_WIDTH / 2 + CHASSIS_MOUNT_INSET,
@@ -349,12 +390,12 @@ def build_recombine() -> bd.Part:
             for cy in (-RAIL_MOUNT_PLATE_HEIGHT / 2 + CHASSIS_MOUNT_INSET,
                         RAIL_MOUNT_PLATE_HEIGHT / 2 - CHASSIS_MOUNT_INSET):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_HEATSET_BORE / 2,
-                        height=M3_HEATSET_LENGTH + 1.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((cx, cy, rail_plate_z - 0.5))
+                    with bd.Locations([(cx, cy, rail_plate_z - 0.5)]):
+                        Cylinder(
+                            radius=M3_HEATSET_BORE / 2,
+                            height=M3_HEATSET_LENGTH + 1.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        )
 
         # ── 6. NEMA17 mount for X-axis drive ──────────────────────────
         # Motor bracket at one end of the rail plate.
@@ -362,45 +403,46 @@ def build_recombine() -> bd.Part:
         motor_z = rail_plate_z + RAIL_MOUNT_PLATE_THICKNESS / 2
 
         with BuildPart():
-            Box(MOTOR_PLATE_THICKNESS, MOTOR_PLATE_HEIGHT, MOTOR_PLATE_WIDTH,
-                align=(Align.CENTER, Align.CENTER, Align.CENTER))
-            bd.Location((motor_x, 0, motor_z + MOTOR_PLATE_WIDTH / 2))
+            with bd.Locations([(motor_x, 0, motor_z + MOTOR_PLATE_WIDTH / 2)]):
+                Box(
+                    MOTOR_PLATE_THICKNESS,
+                    MOTOR_PLATE_HEIGHT,
+                    MOTOR_PLATE_WIDTH,
+                    align=(Align.CENTER, Align.CENTER, Align.CENTER),
+                )
 
         # NEMA17 mounting holes (4x M3 on 31 mm diagonal pattern)
         half_spacing = NEMA17_HOLE_SPACING / 2
         for dz in (-half_spacing, half_spacing):
             for dy in (-half_spacing, half_spacing):
                 with BuildPart(mode=Mode.SUBTRACT):
-                    Cylinder(
-                        radius=M3_CLEARANCE_HOLE / 2,
-                        height=MOTOR_PLATE_THICKNESS + 2.0,
-                        align=(Align.CENTER, Align.CENTER, Align.MIN),
-                    )
-                    bd.Location((motor_x - MOTOR_PLATE_THICKNESS / 2 - 1.0,
-                                 dy, motor_z + MOTOR_PLATE_WIDTH / 2 + dz))
-                    bd.Rotation((0, 90, 0))
+                    with bd.Locations([(motor_x - MOTOR_PLATE_THICKNESS / 2 - 1.0, dy, motor_z + MOTOR_PLATE_WIDTH / 2 + dz)]):
+                        Cylinder(
+                            radius=M3_CLEARANCE_HOLE / 2,
+                            height=MOTOR_PLATE_THICKNESS + 2.0,
+                            align=(Align.CENTER, Align.CENTER, Align.MIN),
+                            rotation=(0, 90, 0),
+                        )
 
         # Central pilot hole for NEMA17
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=MOTOR_PLATE_THICKNESS + 2.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((motor_x - MOTOR_PLATE_THICKNESS / 2 - 1.0,
-                         0, motor_z + MOTOR_PLATE_WIDTH / 2))
-            bd.Rotation((0, 90, 0))
+            with bd.Locations([(motor_x - MOTOR_PLATE_THICKNESS / 2 - 1.0, 0, motor_z + MOTOR_PLATE_WIDTH / 2)]):
+                Cylinder(
+                    radius=(NEMA17_PILOT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=MOTOR_PLATE_THICKNESS + 2.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    rotation=(0, 90, 0),
+                )
 
         # Shaft through-hole
         with BuildPart(mode=Mode.SUBTRACT):
-            Cylinder(
-                radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
-                height=MOTOR_PLATE_THICKNESS + 4.0,
-                align=(Align.CENTER, Align.CENTER, Align.MIN),
-            )
-            bd.Location((motor_x - MOTOR_PLATE_THICKNESS / 2 - 2.0,
-                         0, motor_z + MOTOR_PLATE_WIDTH / 2))
-            bd.Rotation((0, 90, 0))
+            with bd.Locations([(motor_x - MOTOR_PLATE_THICKNESS / 2 - 2.0, 0, motor_z + MOTOR_PLATE_WIDTH / 2)]):
+                Cylinder(
+                    radius=(NEMA17_SHAFT_DIAMETER / 2) + PRINT_TOL_TIGHT,
+                    height=MOTOR_PLATE_THICKNESS + 4.0,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                    rotation=(0, 90, 0),
+                )
 
         # ── 7. Squaring station ───────────────────────────────────────
         # Finding 2: stack skew +/-1.5mm eats all clearance in the 2.0mm
@@ -419,15 +461,23 @@ def build_recombine() -> bd.Part:
 
         # 7a. Main pocket body
         with BuildPart():
-            Box(sq_ext_w, sq_ext_d, sq_ext_h,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((sq_x, sq_y, sq_z))
+            with bd.Locations([(sq_x, sq_y, sq_z)]):
+                Box(
+                    sq_ext_w,
+                    sq_ext_d,
+                    sq_ext_h,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # Hollow interior — tight pocket
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(SQUARING_INT_WIDTH, SQUARING_INT_DEPTH, SQUARING_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((sq_x, sq_y, sq_z + SQUARING_FLOOR))
+            with bd.Locations([(sq_x, sq_y, sq_z + SQUARING_FLOOR)]):
+                Box(
+                    SQUARING_INT_WIDTH,
+                    SQUARING_INT_DEPTH,
+                    SQUARING_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
         # 7b. Funnel entry — wider opening at top that narrows to tight
         # guides over SQUARING_FUNNEL_LENGTH.  Modeled as a subtracted
@@ -438,9 +488,13 @@ def build_recombine() -> bd.Part:
 
         # Upper wide portion of funnel (subtract at the top of the pocket)
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(funnel_top_w, funnel_top_d, funnel_h,
-                align=(Align.CENTER, Align.CENTER, Align.MAX))
-            bd.Location((sq_x, sq_y, sq_z + sq_ext_h))
+            with bd.Locations([(sq_x, sq_y, sq_z + sq_ext_h)]):
+                Box(
+                    funnel_top_w,
+                    funnel_top_d,
+                    funnel_h,
+                    align=(Align.CENTER, Align.CENTER, Align.MAX),
+                )
 
         # 7c. Solenoid tap arm mount — boss on the +X exterior wall with
         # mounting holes and a slot for the tap lever to pass through.
@@ -450,38 +504,47 @@ def build_recombine() -> bd.Part:
 
         # Mounting boss on exterior wall
         with BuildPart():
-            Box(SOLENOID_MOUNT_THICKNESS, SOLENOID_MOUNT_WIDTH,
-                SOLENOID_MOUNT_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.CENTER))
-            bd.Location((sol_x, sol_y, sol_z))
+            with bd.Locations([(sol_x, sol_y, sol_z)]):
+                Box(
+                    SOLENOID_MOUNT_THICKNESS,
+                    SOLENOID_MOUNT_WIDTH,
+                    SOLENOID_MOUNT_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.CENTER),
+                )
 
         # Solenoid mounting holes (2x M3 vertical)
         for dy in (-SOLENOID_HOLE_SPACING / 2, SOLENOID_HOLE_SPACING / 2):
             with BuildPart(mode=Mode.SUBTRACT):
-                Cylinder(
-                    radius=SOLENOID_HOLE_DIA / 2,
-                    height=SOLENOID_MOUNT_THICKNESS + SQUARING_WALL + 2.0,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN),
-                )
-                bd.Location((sq_x + sq_ext_w / 2 - 1.0, sol_y + dy, sol_z))
-                bd.Rotation((0, 90, 0))
+                with bd.Locations([(sq_x + sq_ext_w / 2 - 1.0, sol_y + dy, sol_z)]):
+                    Cylinder(
+                        radius=SOLENOID_HOLE_DIA / 2,
+                        height=SOLENOID_MOUNT_THICKNESS + SQUARING_WALL + 2.0,
+                        align=(Align.CENTER, Align.CENTER, Align.MIN),
+                        rotation=(0, 90, 0),
+                    )
 
         # Slot through the +X wall for the tap arm lever
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(SQUARING_WALL + SOLENOID_MOUNT_THICKNESS + 2.0,
-                SOLENOID_SLOT_WIDTH, SOLENOID_SLOT_HEIGHT,
-                align=(Align.CENTER, Align.CENTER, Align.CENTER))
-            bd.Location((sq_x + sq_ext_w / 2, sol_y, sol_z))
+            with bd.Locations([(sq_x + sq_ext_w / 2, sol_y, sol_z)]):
+                Box(
+                    SQUARING_WALL + SOLENOID_MOUNT_THICKNESS + 2.0,
+                    SOLENOID_SLOT_WIDTH,
+                    SOLENOID_SLOT_HEIGHT,
+                    align=(Align.CENTER, Align.CENTER, Align.CENTER),
+                )
 
         # 7d. Exit slot — opening in the -Y wall for the squared stack
         # to slide or be pushed into the feeder hopper for pass 2.
         exit_slot_w = SQUARING_INT_WIDTH - 2.0   # slightly narrower than pocket
         exit_slot_h = SQUARING_HEIGHT             # full height
         with BuildPart(mode=Mode.SUBTRACT):
-            Box(exit_slot_w, SQUARING_WALL + 2.0, exit_slot_h,
-                align=(Align.CENTER, Align.CENTER, Align.MIN))
-            bd.Location((sq_x, sq_y - sq_ext_d / 2,
-                         sq_z + SQUARING_FLOOR))
+            with bd.Locations([(sq_x, sq_y - sq_ext_d / 2, sq_z + SQUARING_FLOOR)]):
+                Box(
+                    exit_slot_w,
+                    SQUARING_WALL + 2.0,
+                    exit_slot_h,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN),
+                )
 
     return recombine.part
 
