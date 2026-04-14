@@ -1701,8 +1701,8 @@
     if (container) {
       const scene = new THREE.Scene();
 
-      const camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 1, 5000);
-      camera.position.set(900, -500, 400);
+      const camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.01, 100);
+      camera.position.set(2, -1.2, 0.8);
       camera.up.set(0, 0, 1);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -1717,15 +1717,15 @@
       scene.add(ambient);
 
       const key = new THREE.DirectionalLight(0xffffff, 1.2);
-      key.position.set(500, -300, 600);
+      key.position.set(2, -1, 2);
       scene.add(key);
 
       const fill = new THREE.DirectionalLight(0x10B981, 0.3);
-      fill.position.set(-400, 200, 300);
+      fill.position.set(-1, 1, 1);
       scene.add(fill);
 
       const rim = new THREE.DirectionalLight(0xF59E0B, 0.2);
-      rim.position.set(0, 400, 100);
+      rim.position.set(0, 2, 0.5);
       scene.add(rim);
 
       // Controls
@@ -1734,9 +1734,9 @@
       controls.dampingFactor = 0.05;
       controls.autoRotate = true;
       controls.autoRotateSpeed = 0.8;
-      controls.minDistance = 300;
-      controls.maxDistance = 2000;
-      controls.target.set(400, 50, 30);
+      controls.minDistance = 0.5;
+      controls.maxDistance = 5;
+      controls.target.set(0.3, 0.05, 0.03);
       controls.update();
 
       // Load GLB model
@@ -1756,6 +1756,23 @@
             }
           });
           scene.add(model);
+
+          // Auto-fit camera to model bounding box
+          const box = new THREE.Box3().setFromObject(model);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const dist = maxDim / (2 * Math.tan(camera.fov * Math.PI / 360));
+
+          controls.target.copy(center);
+          camera.position.set(center.x + dist * 0.9, center.y - dist * 0.6, center.z + dist * 0.4);
+          camera.near = maxDim * 0.01;
+          camera.far = maxDim * 20;
+          camera.updateProjectionMatrix();
+          controls.minDistance = dist * 0.3;
+          controls.maxDistance = dist * 4;
+          controls.update();
+
           // Hide loading hint after model loads
           var hint = container.querySelector('.model-hint');
           if (hint) hint.textContent = 'Drag to rotate';
