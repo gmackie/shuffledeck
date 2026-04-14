@@ -1,11 +1,12 @@
-# render_hero.py — Export a visually coherent assembly GLB for the landing page.
-# Includes bought hardware (motors, rails, belts) and per-part colors.
+# render_hero.py — Export a colored assembly GLB for the landing page.
+#
+# Strategy: export each part as individual GLB, then merge into one
+# GLB with per-part PBR materials baked into the GLTF JSON.
 #
 # Run: source .venv/bin/activate && cd cad && python render_hero.py
 
 from __future__ import annotations
-
-import sys
+import sys, json, struct, io
 from pathlib import Path
 
 CAD_DIR = Path(__file__).resolve().parent
@@ -20,275 +21,319 @@ from bin_bank import build_bin_bank, bin_bank_info
 from selector.selector import build_selector
 from recombine.recombine import build_recombine
 from output.output import build_output_tray
-from hardware import (
-    build_nema17,
-    build_mgn12h_rail,
-    build_gt2_pulley,
-    build_belt_segment,
-)
-from constants import NEMA17_BODY_LENGTH_STANDARD, NEMA17_FACE
+from hardware import build_nema17, build_mgn12h_rail, build_gt2_pulley, build_belt_segment
 
-# ---------------------------------------------------------------------------
-# Layout constants
-# ---------------------------------------------------------------------------
 _ci = chassis_info()
 _bb = bin_bank_info()
-DATUM_A = _ci["datum_a_z"]          # top of base plate (Z=5)
-FEEDER_X = 50.0                     # feeder center X
-BIN_BANK_X = _ci["bin_bank_zone"][0]  # 105
-BIN_BANK_CENTER_X = BIN_BANK_X + _bb["bank_total_width"] / 2  # ~390
-OUTPUT_X = _ci["output_zone"][0]    # 680
-
-# Y positioning: modules center on the chassis depth
-CHASSIS_DEPTH = _ci["chassis_depth"]  # 140
-MODULE_Y = CHASSIS_DEPTH / 2 - _bb["bank_depth"] / 2  # center bins in chassis
-
-# Rail Z heights
-SELECTOR_RAIL_Z = DATUM_A + _bb["bank_height"] + 5  # above bin bank top
-RECOMBINE_RAIL_Z = DATUM_A  # at base plate level, behind the bin bank
-RECOMBINE_Y = MODULE_Y + _bb["bank_depth"] + 10  # behind the bin bank
-
-# Motor positions — at the ends of each rail
-MOTOR_LEN = NEMA17_BODY_LENGTH_STANDARD  # 40mm
-
-print("Building all parts...\n")
+DATUM_A = _ci["datum_a_z"]  # 5.0 — top of base plate
 
 # ---------------------------------------------------------------------------
-# Build printed parts
+# Chassis coordinate system:
+#   X: 0 = feeder end → 783 = output end
+#   Y: 0 = left side rail inner face → 140 = right edge
+#   Z: 0 = bottom of base plate, 5 = top of plate (Datum A)
+#
+# Bin bank zone: X = 105 → 675 (center X ≈ 390)
+# Feeder zone:   X = 0 → 100 (center X = 50)
+# Output zone:   X = 680 → 780 (center X = 730)
 # ---------------------------------------------------------------------------
-print("  Printed parts...")
+
+# Y center of the card path — bins are ~95mm deep, centered in 140mm chassis
+CARD_Y = 70.0  # center of chassis depth
+
+print("Building parts...\n")
+
 chassis = build_chassis()
 feeder = build_feeder_candidate_a()
 bin_bank = build_bin_bank()
-selector_carriage = build_selector()
+selector = build_selector()
 recombine = build_recombine()
 output_tray = build_output_tray()
 
-# ---------------------------------------------------------------------------
-# Build hardware
-# ---------------------------------------------------------------------------
-print("  Hardware (motors, rails, pulleys)...")
-
-# Selector rail — runs along X above the bin bank
-sel_rail_length = _bb["bank_total_width"] + 60  # 630mm, some overhang
-sel_rail = build_mgn12h_rail(sel_rail_length)
-
-# Recombine rail — runs along X below/behind the bin bank
-rec_rail_length = _bb["bank_total_width"] + 60
-rec_rail = build_mgn12h_rail(rec_rail_length)
-
-# NEMA17 motors (4 total)
+# Hardware
 feeder_motor = build_nema17()
-selector_motor = build_nema17()
-recombine_x_motor = build_nema17()
-recombine_z_motor = build_nema17(body_length=34)  # pancake for Z
-
-# GT2 pulleys
-sel_drive_pulley = build_gt2_pulley()
-sel_idler_pulley = build_gt2_pulley()
-rec_drive_pulley = build_gt2_pulley()
-rec_idler_pulley = build_gt2_pulley()
-
-print("  Belt segments...")
-# Belt paths (simple straight segments, top and bottom runs)
-sel_belt_z = SELECTOR_RAIL_Z + 14  # belt height on selector
-sel_motor_x = BIN_BANK_X - 30
-sel_idler_x = BIN_BANK_X + _bb["bank_total_width"] + 30
-sel_belt_y = MODULE_Y + _bb["bank_depth"] / 2
-
-sel_belt_top = build_belt_segment(
-    (sel_motor_x, sel_belt_y, sel_belt_z),
-    (sel_idler_x, sel_belt_y, sel_belt_z),
-)
-sel_belt_bot = build_belt_segment(
-    (sel_motor_x, sel_belt_y, sel_belt_z - 8),
-    (sel_idler_x, sel_belt_y, sel_belt_z - 8),
-)
-
-rec_belt_z = RECOMBINE_RAIL_Z + 14
-rec_motor_x = sel_motor_x
-rec_idler_x = sel_idler_x
-rec_belt_y = RECOMBINE_Y + 6
-
-rec_belt_top = build_belt_segment(
-    (rec_motor_x, rec_belt_y, rec_belt_z),
-    (rec_idler_x, rec_belt_y, rec_belt_z),
-)
-rec_belt_bot = build_belt_segment(
-    (rec_motor_x, rec_belt_y, rec_belt_z - 8),
-    (rec_idler_x, rec_belt_y, rec_belt_z - 8),
-)
+sel_motor = build_nema17()
+rec_x_motor = build_nema17()
+rec_z_motor = build_nema17(body_length=34)
+sel_rail = build_mgn12h_rail(600)
+rec_rail = build_mgn12h_rail(600)
 
 # ---------------------------------------------------------------------------
-# Position everything
+# Assembly: (name, shape, Location, color_rgba)
+#
+# Colors chosen for contrast on a dark background:
+#   Printed parts: bright teal/emerald
+#   Motors: dark gray with metallic
+#   Rails: steel silver
+#   Chassis: medium gray
+#   Belts: orange
 # ---------------------------------------------------------------------------
-print("\nPositioning assembly...\n")
 
-# Helper: orient motor with shaft pointing +Z, then rotate/translate to mounting face
-def place_motor_x_end(motor, x, y, z, facing_positive_x=True):
-    """Place a motor at the end of an X-axis rail, shaft pointing along X."""
-    if facing_positive_x:
-        return motor.moved(Location((x, y, z), (0, 90, 0)))
-    else:
-        return motor.moved(Location((x, y, z), (0, -90, 0)))
+BIN_CENTER_X = 390.0  # center of bin bank zone
 
+# Selector rail sits above the bin bank
+SEL_RAIL_Z = DATUM_A + _bb["bank_height"] + 8  # ~34.5
 
-assembly_parts = []
+# Recombine sits behind (higher Y) the bin bank, at base level
+REC_Y = CARD_Y + _bb["bank_depth"] / 2 + 15  # ~132
 
-# --- Chassis (base) ---
-assembly_parts.append(("chassis", chassis.moved(Location((0, 0, 0)))))
+parts = []
 
-# --- Bin bank (centered in bin zone) ---
-assembly_parts.append(("bin_bank", bin_bank.moved(
-    Location((BIN_BANK_CENTER_X, MODULE_Y + _bb["bank_depth"] / 2, DATUM_A))
-)))
+# 1. Chassis — origin at corner, no transform needed
+parts.append(("chassis", chassis, Location((0, 0, 0)),
+              (0.35, 0.36, 0.38, 1.0, 0.1, 0.8)))  # medium gray, matte
 
-# --- Feeder (at feeder zone) ---
-assembly_parts.append(("feeder", feeder.moved(
-    Location((FEEDER_X, MODULE_Y + _bb["bank_depth"] / 2, DATUM_A))
-)))
+# 2. Bin bank — origin is center. Place center at bin zone center.
+parts.append(("bin_bank", bin_bank, Location((BIN_CENTER_X, CARD_Y, DATUM_A)),
+              (0.28, 0.32, 0.30, 1.0, 0.05, 0.75)))  # dark green-gray
 
-# --- Output tray ---
-assembly_parts.append(("output", output_tray.moved(
-    Location((OUTPUT_X + 50, MODULE_Y + _bb["bank_depth"] / 2, DATUM_A))
-)))
+# 3. Feeder — origin is center. Place at feeder zone.
+parts.append(("feeder", feeder, Location((50, CARD_Y, DATUM_A)),
+              (0.06, 0.72, 0.50, 1.0, 0.1, 0.45)))  # bright emerald
 
-# --- Selector rail (above bin bank, along X) ---
-assembly_parts.append(("sel_rail", sel_rail.moved(
-    Location((BIN_BANK_CENTER_X, MODULE_Y + _bb["bank_depth"] / 2, SELECTOR_RAIL_Z))
-)))
+# 4. Output tray — origin center-ish but Y goes -92.9→0
+#    So origin Y=0 is the front edge. We need back edge at CARD_Y+47.5
+parts.append(("output", output_tray, Location((730, CARD_Y + 47, DATUM_A)),
+              (0.06, 0.72, 0.50, 1.0, 0.1, 0.45)))  # emerald
 
-# --- Selector carriage (on the rail, positioned at bin 3 for visual interest) ---
-sel_carriage_x = BIN_BANK_X + 3 * _bb["cell_width"] + _bb["cell_width"] / 2
-assembly_parts.append(("selector", selector_carriage.moved(
-    Location((sel_carriage_x, MODULE_Y + _bb["bank_depth"] / 2, SELECTOR_RAIL_Z + 18))
-)))
+# 5. Selector carriage — origin is center, place above bin 3
+sel_x = BIN_CENTER_X - 50  # offset from center for visual interest
+parts.append(("selector", selector, Location((sel_x, CARD_Y, SEL_RAIL_Z)),
+              (0.06, 0.72, 0.50, 1.0, 0.1, 0.45)))  # emerald
 
-# --- Selector motor (at -X end of rail) ---
-assembly_parts.append(("sel_motor", selector_motor.moved(
-    Location((sel_motor_x - 5, MODULE_Y + _bb["bank_depth"] / 2, SELECTOR_RAIL_Z + 10),
-             (0, 90, 0))
-)))
+# 6. Selector rail — centered at bin bank center, above bins
+parts.append(("sel_rail", sel_rail, Location((BIN_CENTER_X, CARD_Y, SEL_RAIL_Z - 5)),
+              (0.65, 0.67, 0.70, 1.0, 0.7, 0.25)))  # steel silver
 
-# --- Selector pulleys ---
-assembly_parts.append(("sel_drive_pulley", sel_drive_pulley.moved(
-    Location((sel_motor_x, sel_belt_y, sel_belt_z - 4))
-)))
-assembly_parts.append(("sel_idler_pulley", sel_idler_pulley.moved(
-    Location((sel_idler_x, sel_belt_y, sel_belt_z - 4))
-)))
+# 7. Selector motor — at left end of rail, shaft pointing +X
+#    Motor is built with shaft along +Z. Rotate -90° around Y to point +X.
+sel_motor_x = BIN_CENTER_X - 300 - 25  # left of rail
+parts.append(("sel_motor", sel_motor,
+              Location((sel_motor_x, CARD_Y, SEL_RAIL_Z + 5), (0, -90, 0)),
+              (0.18, 0.18, 0.20, 1.0, 0.3, 0.6)))  # dark motor
 
-# --- Selector belts ---
-assembly_parts.append(("sel_belt_top", sel_belt_top))
-assembly_parts.append(("sel_belt_bot", sel_belt_bot))
+# 8. Recombine — origin is center, 610mm wide. Place behind bin bank.
+parts.append(("recombine", recombine, Location((BIN_CENTER_X, REC_Y, DATUM_A)),
+              (0.06, 0.72, 0.50, 1.0, 0.1, 0.45)))  # emerald
 
-# --- Recombine rail (behind bin bank, along X) ---
-assembly_parts.append(("rec_rail", rec_rail.moved(
-    Location((BIN_BANK_CENTER_X, RECOMBINE_Y, RECOMBINE_RAIL_Z))
-)))
+# 9. Recombine rail — behind bin bank
+parts.append(("rec_rail", rec_rail, Location((BIN_CENTER_X, REC_Y, DATUM_A - 3)),
+              (0.65, 0.67, 0.70, 1.0, 0.7, 0.25)))  # steel
 
-# --- Recombine carriage (on the rail, at bin 5) ---
-rec_carriage_x = BIN_BANK_X + 5 * _bb["cell_width"] + _bb["cell_width"] / 2
-assembly_parts.append(("recombine", recombine.moved(
-    Location((rec_carriage_x, RECOMBINE_Y, RECOMBINE_RAIL_Z + 18))
-)))
+# 10. Recombine X motor — left end of recombine rail
+rec_motor_x = BIN_CENTER_X - 300 - 25
+parts.append(("rec_x_motor", rec_x_motor,
+              Location((rec_motor_x, REC_Y, DATUM_A + 8), (0, -90, 0)),
+              (0.18, 0.18, 0.20, 1.0, 0.3, 0.6)))  # dark motor
 
-# --- Recombine X motor (at -X end of rail) ---
-assembly_parts.append(("rec_x_motor", recombine_x_motor.moved(
-    Location((rec_motor_x - 5, RECOMBINE_Y, RECOMBINE_RAIL_Z + 10),
-             (0, 90, 0))
-)))
+# 11. Recombine Z motor — small, on recombine carriage, shaft pointing up
+parts.append(("rec_z_motor", rec_z_motor,
+              Location((BIN_CENTER_X + 60, REC_Y - 25, DATUM_A + 45), (180, 0, 0)),
+              (0.18, 0.18, 0.20, 1.0, 0.3, 0.6)))
 
-# --- Recombine Z motor (on the carriage, vertical) ---
-assembly_parts.append(("rec_z_motor", recombine_z_motor.moved(
-    Location((rec_carriage_x + 30, RECOMBINE_Y, RECOMBINE_RAIL_Z + 25))
-)))
+# 12. Feeder motor — below feeder, shaft up through hopper floor
+parts.append(("feed_motor", feeder_motor,
+              Location((50, CARD_Y, DATUM_A), (180, 0, 0)),
+              (0.18, 0.18, 0.20, 1.0, 0.3, 0.6)))
 
-# --- Recombine pulleys ---
-assembly_parts.append(("rec_drive_pulley", rec_drive_pulley.moved(
-    Location((rec_motor_x, rec_belt_y, rec_belt_z - 4))
-)))
-assembly_parts.append(("rec_idler_pulley", rec_idler_pulley.moved(
-    Location((rec_idler_x, rec_belt_y, rec_belt_z - 4))
-)))
+# 13-14. GT2 belts for selector (top and bottom runs)
+belt_z = SEL_RAIL_Z + 2
+belt_left_x = BIN_CENTER_X - 295
+belt_right_x = BIN_CENTER_X + 295
+parts.append(("sel_belt_top",
+              build_belt_segment((belt_left_x, CARD_Y, belt_z),
+                                (belt_right_x, CARD_Y, belt_z)),
+              Location((0, 0, 0)),
+              (0.96, 0.65, 0.10, 1.0, 0.0, 0.5)))  # orange belt
 
-# --- Recombine belts ---
-assembly_parts.append(("rec_belt_top", rec_belt_top))
-assembly_parts.append(("rec_belt_bot", rec_belt_bot))
+parts.append(("sel_belt_bot",
+              build_belt_segment((belt_left_x, CARD_Y, belt_z - 10),
+                                (belt_right_x, CARD_Y, belt_z - 10)),
+              Location((0, 0, 0)),
+              (0.96, 0.65, 0.10, 1.0, 0.0, 0.5)))
 
-# --- Feeder motor (below feeder, shaft pointing up) ---
-assembly_parts.append(("feed_motor", feeder_motor.moved(
-    Location((FEEDER_X, MODULE_Y + _bb["bank_depth"] / 2, DATUM_A - MOTOR_LEN),
-             (180, 0, 0))
-)))
+# 15-16. GT2 belts for recombine
+rec_belt_z = DATUM_A + 10
+parts.append(("rec_belt_top",
+              build_belt_segment((belt_left_x, REC_Y, rec_belt_z),
+                                (belt_right_x, REC_Y, rec_belt_z)),
+              Location((0, 0, 0)),
+              (0.96, 0.65, 0.10, 1.0, 0.0, 0.5)))
+
+parts.append(("rec_belt_bot",
+              build_belt_segment((belt_left_x, REC_Y, rec_belt_z - 10),
+                                (belt_right_x, REC_Y, rec_belt_z - 10)),
+              Location((0, 0, 0)),
+              (0.96, 0.65, 0.10, 1.0, 0.0, 0.5)))
 
 # ---------------------------------------------------------------------------
-# Color map — part name prefix -> hex color
+# Export each part as individual temp GLB, then merge with colors
 # ---------------------------------------------------------------------------
-COLOR_MAP = {
-    "chassis":      (0.15, 0.15, 0.17),      # dark charcoal
-    "bin_bank":     (0.22, 0.24, 0.22),       # dark gray-green
-    "feeder":       (0.06, 0.45, 0.32),       # emerald green (accent)
-    "selector":     (0.06, 0.45, 0.32),       # emerald green (accent)
-    "output":       (0.06, 0.45, 0.32),       # emerald green (accent)
-    "recombine":    (0.06, 0.45, 0.32),       # emerald green (accent)
-    "sel_rail":     (0.55, 0.56, 0.58),       # steel/silver
-    "rec_rail":     (0.55, 0.56, 0.58),       # steel/silver
-    "sel_motor":    (0.12, 0.12, 0.14),       # near-black (motor body)
-    "rec_x_motor":  (0.12, 0.12, 0.14),       # near-black
-    "rec_z_motor":  (0.12, 0.12, 0.14),       # near-black
-    "feed_motor":   (0.12, 0.12, 0.14),       # near-black
-    "sel_belt":     (0.95, 0.62, 0.07),       # orange (GT2 belt)
-    "rec_belt":     (0.95, 0.62, 0.07),       # orange
-    "sel_drive":    (0.7, 0.7, 0.72),         # light silver (pulley)
-    "sel_idler":    (0.7, 0.7, 0.72),
-    "rec_drive":    (0.7, 0.7, 0.72),
-    "rec_idler":    (0.7, 0.7, 0.72),
+import tempfile, os
+
+SITE_DIR = CAD_DIR.parent / "site"
+TMP_DIR = Path(tempfile.mkdtemp(prefix="shuffledeck_"))
+
+print(f"\nExporting {len(parts)} parts to temp GLBs...")
+
+part_glbs = []
+for name, shape, loc, color in parts:
+    moved = shape.moved(loc)
+    tmp_path = TMP_DIR / f"{name}.glb"
+    export_gltf(moved, str(tmp_path), binary=True)
+    part_glbs.append((name, tmp_path, color))
+    bb = moved.bounding_box()
+    print(f"  {name}: {bb.size.X:.0f}x{bb.size.Y:.0f}x{bb.size.Z:.0f}mm at ({bb.min.X:.0f},{bb.min.Y:.0f},{bb.min.Z:.0f})")
+
+
+# ---------------------------------------------------------------------------
+# Merge GLBs into one file with per-part PBR materials
+# ---------------------------------------------------------------------------
+
+def read_glb(path):
+    """Read a GLB file and return (json_dict, binary_chunk_bytes)."""
+    with open(path, "rb") as f:
+        magic = f.read(4)
+        version = struct.unpack("<I", f.read(4))[0]
+        total_len = struct.unpack("<I", f.read(4))[0]
+        # JSON chunk
+        json_len = struct.unpack("<I", f.read(4))[0]
+        json_type = struct.unpack("<I", f.read(4))[0]  # 0x4E4F534A
+        json_data = json.loads(f.read(json_len).decode("utf-8"))
+        # Binary chunk (may not exist for empty meshes)
+        bin_data = b""
+        if f.tell() < total_len:
+            bin_len = struct.unpack("<I", f.read(4))[0]
+            bin_type = struct.unpack("<I", f.read(4))[0]  # 0x004E4942
+            bin_data = f.read(bin_len)
+    return json_data, bin_data
+
+
+def write_glb(json_dict, bin_data, out_path):
+    """Write a GLB file from json dict and binary buffer."""
+    json_bytes = json.dumps(json_dict, separators=(",", ":")).encode("utf-8")
+    # Pad JSON to 4-byte boundary
+    json_pad = (4 - len(json_bytes) % 4) % 4
+    json_bytes += b" " * json_pad
+    # Pad binary to 4-byte boundary
+    bin_pad = (4 - len(bin_data) % 4) % 4
+    bin_data += b"\x00" * bin_pad
+
+    total = 12 + 8 + len(json_bytes) + 8 + len(bin_data)
+    with open(out_path, "wb") as f:
+        f.write(b"glTF")
+        f.write(struct.pack("<I", 2))
+        f.write(struct.pack("<I", total))
+        # JSON chunk
+        f.write(struct.pack("<I", len(json_bytes)))
+        f.write(struct.pack("<I", 0x4E4F534A))
+        f.write(json_bytes)
+        # Binary chunk
+        f.write(struct.pack("<I", len(bin_data)))
+        f.write(struct.pack("<I", 0x004E4942))
+        f.write(bin_data)
+
+
+print("\nMerging into single colored GLB...")
+
+merged_json = {
+    "asset": {"version": "2.0", "generator": "ShuffleDeck render_hero.py"},
+    "scene": 0,
+    "scenes": [{"nodes": []}],
+    "nodes": [],
+    "meshes": [],
+    "accessors": [],
+    "bufferViews": [],
+    "buffers": [{"byteLength": 0}],
+    "materials": [],
 }
 
-def get_color(name: str) -> tuple:
-    """Look up color by prefix match."""
-    for prefix, color in COLOR_MAP.items():
-        if name.startswith(prefix):
-            return color
-    return (0.5, 0.5, 0.5)  # default gray
+merged_bin = bytearray()
 
-# ---------------------------------------------------------------------------
-# Export as colored GLTF (binary GLB)
-# ---------------------------------------------------------------------------
-print("Exporting colored GLB...\n")
+for name, glb_path, color in part_glbs:
+    r, g, b, a, metallic, roughness = color
 
-# Build123d export_gltf doesn't support per-part colors directly.
-# We export each part as a separate GLTF node via the names parameter.
-# The three.js viewer will apply colors based on node names.
+    src_json, src_bin = read_glb(glb_path)
 
-# For now, export the full assembly as one GLB and let the viewer colorize.
-# We'll embed color info in the node names.
+    if not src_json.get("meshes"):
+        print(f"  {name}: no meshes, skipping")
+        continue
 
-all_shapes = []
-for name, shape in assembly_parts:
-    all_shapes.append(shape)
+    # Offsets for merging
+    acc_offset = len(merged_json["accessors"])
+    bv_offset = len(merged_json["bufferViews"])
+    mesh_offset = len(merged_json["meshes"])
+    mat_idx = len(merged_json["materials"])
+    bin_offset = len(merged_bin)
 
-assembly = Compound(children=all_shapes)
+    # Add material
+    merged_json["materials"].append({
+        "name": name,
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [r, g, b, a],
+            "metallicFactor": metallic,
+            "roughnessFactor": roughness,
+        },
+    })
 
-out_path = CAD_DIR.parent / "site" / "assembly.glb"
-export_gltf(assembly, str(out_path), binary=True)
-print(f"Exported: {out_path} ({out_path.stat().st_size / 1024:.0f} KB)")
+    # Copy buffer views with offset
+    for bv in src_json.get("bufferViews", []):
+        new_bv = dict(bv)
+        new_bv["buffer"] = 0
+        new_bv["byteOffset"] = bv.get("byteOffset", 0) + bin_offset
+        merged_json["bufferViews"].append(new_bv)
 
-# Also export a name map as JSON for the viewer to use for coloring
-import json
-name_map = {i: name for i, (name, _) in enumerate(assembly_parts)}
-color_data = {name: list(get_color(name)) for name, _ in assembly_parts}
-meta_path = CAD_DIR.parent / "site" / "assembly-colors.json"
-with open(meta_path, "w") as f:
-    json.dump({
-        "parts": [name for name, _ in assembly_parts],
-        "colors": color_data,
-    }, f, indent=2)
-print(f"Color map: {meta_path}")
+    # Copy accessors with offset
+    for acc in src_json.get("accessors", []):
+        new_acc = dict(acc)
+        if "bufferView" in new_acc:
+            new_acc["bufferView"] += bv_offset
+        merged_json["accessors"].append(new_acc)
 
-print(f"\nAssembly: {len(assembly_parts)} parts")
-bb = assembly.bounding_box()
-print(f"Bounding box: {bb.size.X:.0f} × {bb.size.Y:.0f} × {bb.size.Z:.0f} mm")
-print(f"Center: ({bb.center().X:.0f}, {bb.center().Y:.0f}, {bb.center().Z:.0f})")
-print("\nDone.")
+    # Copy meshes, rewriting accessor and material indices
+    for mesh in src_json.get("meshes", []):
+        new_mesh = {"name": name, "primitives": []}
+        for prim in mesh["primitives"]:
+            new_prim = {}
+            if "attributes" in prim:
+                new_prim["attributes"] = {}
+                for attr, idx in prim["attributes"].items():
+                    new_prim["attributes"][attr] = idx + acc_offset
+            if "indices" in prim:
+                new_prim["indices"] = prim["indices"] + acc_offset
+            new_prim["material"] = mat_idx
+            if "mode" in prim:
+                new_prim["mode"] = prim["mode"]
+            new_mesh["primitives"].append(new_prim)
+        merged_json["meshes"].append(new_mesh)
+
+    # Add nodes referencing the new meshes
+    for i in range(len(src_json.get("meshes", []))):
+        node_idx = len(merged_json["nodes"])
+        merged_json["scenes"][0]["nodes"].append(node_idx)
+        merged_json["nodes"].append({
+            "name": name,
+            "mesh": mesh_offset + i,
+        })
+
+    # Append binary data
+    merged_bin.extend(src_bin)
+
+# Update buffer length
+merged_json["buffers"][0]["byteLength"] = len(merged_bin)
+
+# Write merged GLB
+out_path = SITE_DIR / "assembly.glb"
+write_glb(merged_json, bytes(merged_bin), out_path)
+
+# Clean up temp files
+for _, p, _ in part_glbs:
+    p.unlink(missing_ok=True)
+TMP_DIR.rmdir()
+
+print(f"\nExported: {out_path} ({out_path.stat().st_size / 1024:.0f} KB)")
+print(f"Parts: {len(parts)}")
+print(f"Materials: {len(merged_json['materials'])}")
+print(f"Meshes: {len(merged_json['meshes'])}")
+print(f"Nodes: {len(merged_json['nodes'])}")
+print("Done.")
