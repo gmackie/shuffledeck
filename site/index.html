@@ -1745,16 +1745,66 @@
         'assembly.glb',
         function (gltf) {
           const model = gltf.scene;
-          // Apply materials
+
+          // Color palette for assembly parts (matches render_hero.py export order)
+          const partColors = [
+            { color: 0x262629, metal: 0.2, rough: 0.8 },   // chassis — dark charcoal
+            { color: 0x383D38, metal: 0.1, rough: 0.7 },   // bin_bank — dark gray-green
+            { color: 0x0F7352, metal: 0.15, rough: 0.5 },  // feeder — emerald
+            { color: 0x0F7352, metal: 0.15, rough: 0.5 },  // output — emerald
+            { color: 0x8C8F94, metal: 0.7, rough: 0.3 },   // sel_rail — steel
+            { color: 0x0F7352, metal: 0.15, rough: 0.5 },  // selector — emerald
+            { color: 0x1F1F24, metal: 0.4, rough: 0.6 },   // sel_motor — near-black
+            { color: 0xB3B3B8, metal: 0.8, rough: 0.2 },   // sel_drive_pulley — silver
+            { color: 0xB3B3B8, metal: 0.8, rough: 0.2 },   // sel_idler_pulley
+            { color: 0xF29E12, metal: 0.0, rough: 0.4 },   // sel_belt_top — orange
+            { color: 0xF29E12, metal: 0.0, rough: 0.4 },   // sel_belt_bot
+            { color: 0x8C8F94, metal: 0.7, rough: 0.3 },   // rec_rail — steel
+            { color: 0x0F7352, metal: 0.15, rough: 0.5 },  // recombine — emerald
+            { color: 0x1F1F24, metal: 0.4, rough: 0.6 },   // rec_x_motor
+            { color: 0x1F1F24, metal: 0.4, rough: 0.6 },   // rec_z_motor
+            { color: 0xB3B3B8, metal: 0.8, rough: 0.2 },   // rec_drive_pulley
+            { color: 0xB3B3B8, metal: 0.8, rough: 0.2 },   // rec_idler_pulley
+            { color: 0xF29E12, metal: 0.0, rough: 0.4 },   // rec_belt_top
+            { color: 0xF29E12, metal: 0.0, rough: 0.4 },   // rec_belt_bot
+            { color: 0x1F1F24, metal: 0.4, rough: 0.6 },   // feed_motor
+          ];
+
+          // Apply per-part materials by traversing top-level children
+          var meshIndex = 0;
           model.traverse(function (child) {
             if (child.isMesh) {
+              var pi = Math.min(meshIndex, partColors.length - 1);
+              // Group meshes by node parent to map to parts
+              var parentIdx = child.parent ? model.children.indexOf(child.parent) : meshIndex;
+              if (parentIdx < 0) parentIdx = meshIndex;
+              var ci = Math.min(parentIdx, partColors.length - 1);
+              var pc = partColors[ci];
               child.material = new THREE.MeshStandardMaterial({
-                color: 0x888888,
-                metalness: 0.3,
-                roughness: 0.6,
+                color: pc.color,
+                metalness: pc.metal,
+                roughness: pc.rough,
               });
+              meshIndex++;
             }
           });
+
+          // Fallback: if only a few top-level nodes, color by top-level children
+          if (model.children.length <= partColors.length) {
+            model.children.forEach(function(node, i) {
+              var pc = partColors[Math.min(i, partColors.length - 1)];
+              node.traverse(function(child) {
+                if (child.isMesh) {
+                  child.material = new THREE.MeshStandardMaterial({
+                    color: pc.color,
+                    metalness: pc.metal,
+                    roughness: pc.rough,
+                  });
+                }
+              });
+            });
+          }
+
           scene.add(model);
 
           // Auto-fit camera to model bounding box
@@ -1764,13 +1814,18 @@
           const maxDim = Math.max(size.x, size.y, size.z);
           const dist = maxDim / (2 * Math.tan(camera.fov * Math.PI / 360));
 
+          // Hero camera angle: high front-right, looking at center
           controls.target.copy(center);
-          camera.position.set(center.x + dist * 0.9, center.y - dist * 0.6, center.z + dist * 0.4);
-          camera.near = maxDim * 0.01;
-          camera.far = maxDim * 20;
+          camera.position.set(
+            center.x + dist * 0.7,
+            center.y - dist * 0.5,
+            center.z + dist * 0.45
+          );
+          camera.near = maxDim * 0.001;
+          camera.far = maxDim * 50;
           camera.updateProjectionMatrix();
-          controls.minDistance = dist * 0.3;
-          controls.maxDistance = dist * 4;
+          controls.minDistance = dist * 0.2;
+          controls.maxDistance = dist * 5;
           controls.update();
 
           // Hide loading hint after model loads
