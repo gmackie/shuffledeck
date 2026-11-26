@@ -1,0 +1,17 @@
+name: Product site analytics
+on:
+  pull_request:
+    paths: ['site/**', 'tests/site-analytics.test.mjs', '.github/workflows/site-analytics.yml']
+  push:
+    branches: [main]
+    paths: ['site/**', 'tests/site-analytics.test.mjs', '.github/workflows/site-analytics.yml']
+permissions:
+  contents: read
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: node --test tests/site-analytics.test.mjs
